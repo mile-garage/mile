@@ -1,0 +1,19 @@
+services:
+  mile:
+    image: ghcr.io/mile-garage/mile:latest
+    # build: .   # uncomment to build from source
+    container_name: mile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Europe/Rome
+    volumes:
+      - mile-data:/data
+    # With a host path (e.g. a TrueNAS dataset) run as the user that owns it:
+    # user: "568:568"
+    # volumes:
+    #   - /mnt/tank/apps/mile:/data
+
+volumes:
+  mile-data:

@@ -1,0 +1,22 @@
+# local data (database, backups, attachments)
+data/
+*.db
+*.db-wal
+*.db-shm
+tmp/
+
+# frontend
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+*.tsbuildinfo
+
+# build
+/mile
+/mile.exe
+
+.vs/
+.vscode/
+.idea/
+.DS_Store
+.claude/
