@@ -24,7 +24,11 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 
 # 3) Final image: the binary only
 FROM gcr.io/distroless/static-debian12:nonroot
-LABEL org.opencontainers.image.title="MILE" \n      org.opencontainers.image.description="Self-hosted vehicle deadlines, expenses and fuel tracker" \n      org.opencontainers.image.source="https://github.com/mile-garage/mile" \n      org.opencontainers.image.licenses="AGPL-3.0-only" \n      org.opencontainers.image.vendor="Gabriele Menghi"
+LABEL org.opencontainers.image.title="MILE" \
+      org.opencontainers.image.description="Self-hosted vehicle deadlines, expenses and fuel tracker" \
+      org.opencontainers.image.source="https://github.com/mile-garage/mile" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.vendor="Gabriele Menghi"
 COPY --from=build /out/mile /mile
 COPY --from=build --chown=65532:65532 /out/data /data
 ENV MILE_DATA_DIR=/data \
