@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Package backup makes a daily copy of the database. Attachments are plain
 // files in the data directory: back up the whole volume (e.g. with a ZFS
 // snapshot) to keep them too.

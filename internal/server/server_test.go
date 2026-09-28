@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 package server
 
 import (
@@ -32,7 +35,7 @@ func newServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { d.Close() })
 	st := store.New(d, filepath.Join(dir, "files"), time.UTC)
 	static := fstest.MapFS{"index.html": {Data: []byte("<html></html>")}}
-	ts := httptest.NewServer(New(st, static, 5).Handler())
+	ts := httptest.NewServer(New("test", st, static, 5).Handler())
 	t.Cleanup(ts.Close)
 	return ts
 }
@@ -81,9 +84,9 @@ func TestFlow(t *testing.T) {
 	ts := newServer(t)
 	admin := newClient(t, ts)
 
-	var status map[string]bool
+	var status map[string]any
 	admin.must("GET", "/api/status", nil, &status)
-	if !status["setup_required"] {
+	if status["setup_required"] != true || status["version"] != "test" {
 		t.Fatal("setup should be required")
 	}
 	if code := admin.do("GET", "/api/vehicles", nil, nil); code != 401 {

@@ -3,20 +3,47 @@ data/
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
+
+# scratch files and local assets
 tmp/
+temp/
+*.log
+*.tmp
+*.bak
+*.orig
+*.swp
+*~
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Go build output
+/mile
+/mile.exe
+*.exe
+*.test
+*.out
+coverage.*
+dist-bin/
 
 # frontend
 web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
+web/.vite/
 *.tsbuildinfo
+npm-debug.log*
 
-# build
-/mile
-/mile.exe
-
+# editors and OS
 .vs/
 .vscode/
 .idea/
-.DS_Store
 .claude/
+.DS_Store
+Thumbs.db
+desktop.ini

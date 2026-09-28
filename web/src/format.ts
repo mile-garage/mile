@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import type { FuelType, Locale } from './api'
 
 const pad = (n: number) => String(n).padStart(2, '0')

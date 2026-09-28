@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, type Deadline, type Reminder, type Vehicle } from '../api'

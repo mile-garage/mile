@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Package deadlines computes when each vehicle obligation falls due, following
 // the Italian rules for inspection (revisione), road tax (bollo), insurance
 // with suspensions, and scheduled service (tagliando).

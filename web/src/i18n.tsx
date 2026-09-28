@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { ApiError, type Locale } from './api'
 
@@ -274,6 +277,9 @@ const it = {
   'settings.deleteUserText': 'L’utente {name} verrà eliminato insieme ai suoi promemoria personali.',
   'settings.userCreated': 'Utente creato',
   'settings.about': 'Informazioni',
+  'settings.aboutText': 'Software libero rilasciato con licenza AGPL-3.0. Il nome MILE e il logo non sono coperti dalla licenza.',
+  'settings.source': 'Codice sorgente',
+  'settings.version': 'Versione',
 
   'relative.in': 'tra {n} giorni',
   'relative.in1': 'domani',
@@ -584,6 +590,9 @@ const en: Record<Key, string> = {
   'settings.deleteUserText': 'The user {name} will be deleted together with their personal reminders.',
   'settings.userCreated': 'User created',
   'settings.about': 'About',
+  'settings.aboutText': 'Free software released under the AGPL-3.0 license. The MILE name and logo are not covered by the license.',
+  'settings.source': 'Source code',
+  'settings.version': 'Version',
 
   'relative.in': 'in {n} days',
   'relative.in1': 'tomorrow',

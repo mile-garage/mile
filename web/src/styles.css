@@ -1,3 +1,6 @@
+/* Copyright (C) 2026 Gabriele Menghi
+   SPDX-License-Identifier: AGPL-3.0-only */
+
 :root {
   --accent: #0f766e;
   --accent-600: #115e59;
@@ -1208,4 +1211,14 @@ input[type='checkbox'] {
   to {
     transform: rotate(360deg);
   }
+}
+
+.about-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.about-brand strong {
+  letter-spacing: 0.14em;
 }

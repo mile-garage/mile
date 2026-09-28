@@ -1,4 +1,7 @@
-// Mile: self-hosted vehicle deadlines, expenses and fuel tracking.
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
+// MILE: self-hosted vehicle deadlines, expenses and fuel tracking.
 //
 // Usage:
 //
@@ -73,7 +76,7 @@ func serve(cfg config.Config) error {
 	defer st.DB.Close()
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(st, web.Dist(), cfg.MaxUploadMB).Handler(),
+		Handler:           server.New(version, st, web.Dist(), cfg.MaxUploadMB).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}

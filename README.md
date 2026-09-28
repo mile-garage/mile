@@ -114,4 +114,10 @@ web/                 React frontend
 
 ## License
 
-[AGPL-3.0](LICENSE)
+Copyright (C) 2026 Gabriele Menghi.
+
+MILE is free software: you can use, study, modify and redistribute it under the terms of the [GNU Affero General Public License v3.0 only](LICENSE). If you run a modified version as a service for other people, you must share its source code with them. See [NOTICE](NOTICE).
+
+The **MILE name and logo are not covered by the license**: forks must use a different name and logo. See the [trademark policy](TRADEMARKS.md).
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).

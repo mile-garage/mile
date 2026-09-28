@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Locale, type User } from '../api'
 import { PageHead, useLogout, useSession } from '../App'
@@ -24,6 +27,7 @@ export function Settings() {
       <Calendar />
       <Password />
       {user.is_admin && <Users />}
+      <About />
     </div>
   )
 }
@@ -329,5 +333,40 @@ function ResetForm({ user, onClose }: { user: User; onClose: () => void }) {
         </div>
       </form>
     </Modal>
+  )
+}
+
+const SOURCE_URL = 'https://github.com/mile-garage/mile'
+
+/** Version, copyright and a link to the source code (AGPL-3.0, section 13). */
+function About() {
+  const { t } = useI18n()
+  const [version, setVersion] = useState('')
+  useEffect(() => {
+    api
+      .get<{ version: string }>('/api/status')
+      .then((s) => setVersion(s.version))
+      .catch(() => {})
+  }, [])
+  return (
+    <section className="card form-card about">
+      <h2>{t('settings.about')}</h2>
+      <div className="about-brand">
+        <img src="/logo-m.png" alt="" width="42" height="40" />
+        <div>
+          <strong>MILE</strong>
+          <div className="muted small">
+            {t('settings.version')} {version || '—'}
+          </div>
+        </div>
+      </div>
+      <p className="muted">{t('settings.aboutText')}</p>
+      <p className="small">© 2026 Gabriele Menghi</p>
+      <div className="row-actions">
+        <a className="btn" href={SOURCE_URL} target="_blank" rel="noopener">
+          {t('settings.source')}
+        </a>
+      </div>
+    </section>
   )
 }

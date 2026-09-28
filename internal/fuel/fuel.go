@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Package fuel computes consumption with the full-to-full method: the fuel
 // put in after a full tank, up to and including the next full tank, divided by
 // the km driven in between.

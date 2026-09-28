@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { Link } from 'react-router'
 import { fileUrl, type Vehicle } from '../api'
 import { PageHead } from '../App'

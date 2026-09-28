@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Package ical renders deadlines as an iCalendar (RFC 5545) feed that
 // calendar apps can subscribe to.
 package ical

@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import { api, type User } from './api'

@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Stroke icons (24×24, currentColor).
 
 const paths: Record<string, string> = {

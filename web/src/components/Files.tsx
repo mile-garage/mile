@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useRef, useState } from 'react'
 import { api, ApiError, fileUrl, type Attachment } from '../api'
 import { useI18n } from '../i18n'

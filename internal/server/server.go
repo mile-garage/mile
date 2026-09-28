@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Package server exposes the JSON API, the calendar feed and the frontend.
 package server
 
@@ -20,6 +23,7 @@ import (
 const cookieName = "mile_session"
 
 type Server struct {
+	version   string
 	store     *store.Store
 	static    fs.FS
 	maxUpload int64
@@ -31,8 +35,8 @@ func init() {
 	mime.AddExtensionType(".webp", "image/webp")
 }
 
-func New(s *store.Store, static fs.FS, maxUploadMB int) *Server {
-	return &Server{store: s, static: static, maxUpload: int64(maxUploadMB) << 20}
+func New(version string, s *store.Store, static fs.FS, maxUploadMB int) *Server {
+	return &Server{version: version, store: s, static: static, maxUpload: int64(maxUploadMB) << 20}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -227,7 +231,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	writeJSON(w, map[string]bool{"setup_required": n == 0})
+	writeJSON(w, map[string]any{"setup_required": n == 0, "version": s.version})
 }
 
 // setup creates the first user (administrator) on a new installation.

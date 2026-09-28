@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Gabriele Menghi
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react'
 import {
   api,
