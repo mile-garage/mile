@@ -184,3 +184,33 @@ func TestSort(t *testing.T) {
 		t.Errorf("unexpected order: %+v", ds)
 	}
 }
+
+func TestNextTyreChange(t *testing.T) {
+	cases := []struct {
+		fitted       TyreSeason
+		since, today string
+		due          string
+		fit          TyreSeason
+	}{
+		{Summer, "2026-04-20", "2026-09-29", "2026-11-15", Winter},
+		{Summer, "2026-04-20", "2026-11-15", "2026-11-15", Winter},
+		{Summer, "2026-04-20", "2026-12-01", "2026-11-15", Winter}, // overdue during the obligation
+		{Summer, "2026-04-20", "2027-04-15", "2026-11-15", Winter},
+		{Summer, "2026-04-20", "2027-04-16", "2027-11-15", Winter}, // a new season
+		{Summer, "2027-04-10", "2027-04-10", "2027-11-15", Winter}, // fitted a few days early
+		{Winter, "2026-11-10", "2026-11-20", "2027-05-15", Summer},
+		{Winter, "2026-11-10", "2027-05-15", "2027-05-15", Summer},
+		{Winter, "2026-11-10", "2027-06-01", "2027-05-15", Summer}, // overdue until winter tyres are allowed again
+		{Winter, "2026-11-10", "2027-10-15", "2028-05-15", Summer},
+		{Winter, "2027-09-29", "2027-09-29", "2028-05-15", Summer}, // fitted before 15 October
+	}
+	for _, c := range cases {
+		due, fit, ok := NextTyreChange(c.fitted, d(c.since), d(c.today))
+		if !ok || Format(due) != c.due || fit != c.fit {
+			t.Errorf("%s fitted %s, on %s: got %s %s, want %s %s", c.fitted, c.since, c.today, Format(due), fit, c.due, c.fit)
+		}
+	}
+	if _, _, ok := NextTyreChange(AllSeason, d("2026-04-01"), d("2026-12-01")); ok {
+		t.Error("all-season tyres need no change")
+	}
+}

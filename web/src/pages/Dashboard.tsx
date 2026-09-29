@@ -18,6 +18,8 @@ export const tabFor: Record<string, string> = {
   service: 'deadlines',
   oil_change: 'deadlines',
   insurance: 'insurance',
+  tyre_change: 'tyres',
+  tyre_rotation: 'tyres',
 }
 
 export function Dashboard() {

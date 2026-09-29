@@ -5,6 +5,7 @@ import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } fr
 import {
   api,
   expenseCategories,
+  twoWheels,
   type Attachment,
   type Expense,
   type ExpenseCategory,
@@ -16,9 +17,13 @@ import {
   type RefuelInput,
   type Reminder,
   type ReminderInput,
+  type TyreEventInput,
+  type TyreSet,
+  type TyreSetInput,
+  type TyreSeason,
   type Vehicle,
 } from '../api'
-import { useI18n } from '../i18n'
+import { useI18n, type T } from '../i18n'
 import { addMonths, centsInput, num, numInput, parseCents, parseNumber, today, unit } from '../format'
 import { FileList, upload, UploadButton, type UploadTarget } from './Files'
 import { Icon } from './Icon'
@@ -605,6 +610,184 @@ export function DateForm({
             {busy ? <Spinner small /> : submitLabel}
           </button>
         </div>
+      </form>
+    </Modal>
+  )
+}
+
+// ---- tyres ----
+
+export const tyreSeasons: TyreSeason[] = ['summer', 'winter', 'all_season']
+
+/** "Invernali · Nokian WR Snowproof" */
+export function tyreLabel(s: TyreSet, t: T): string {
+  return [t(`tyres.season.${s.season}`), [s.brand, s.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ')
+}
+
+export function TyreSetForm({ vehicle, set, onSaved, onClose }: { vehicle: Vehicle; set?: TyreSet; onSaved: () => void; onClose: () => void }) {
+  const { t } = useI18n()
+  const { toast } = useUI()
+  const [v, setV] = useState<TyreSetInput>(
+    set ?? { season: 'summer', brand: '', model: '', size: '', dot: '', storage: '', notes: '', retired: false },
+  )
+  const { busy, run } = useSubmit()
+  const field = (k: 'brand' | 'model' | 'size' | 'dot' | 'storage' | 'notes') => ({
+    value: v[k],
+    onChange: (e: { target: { value: string } }) => setV((x) => ({ ...x, [k]: e.target.value })),
+  })
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    run(async () => {
+      if (set) await api.put(`/api/tyre-sets/${set.id}`, v)
+      else await api.post(`/api/vehicles/${vehicle.id}/tyre-sets`, v)
+      toast(t('common.saved'))
+      onSaved()
+    })
+  }
+
+  const onDelete = useDelete(set ? `/api/tyre-sets/${set.id}` : null, t('tyres.deleteSetText'), onSaved)
+
+  return (
+    <Modal title={set ? t('tyres.edit') : t('tyres.new')} onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        <Field label={t('tyres.season')} wide>
+          <select value={v.season} onChange={(e) => setV((x) => ({ ...x, season: e.target.value as TyreSeason }))}>
+            {tyreSeasons.map((s) => (
+              <option key={s} value={s}>
+                {t(`tyres.season.${s}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t('tyres.brand')}>
+          <input {...field('brand')} autoFocus={!set} />
+        </Field>
+        <Field label={t('tyres.model')}>
+          <input {...field('model')} />
+        </Field>
+        <Field label={t('tyres.size')}>
+          <input {...field('size')} placeholder="205/55 R16 91H" />
+        </Field>
+        <Field label={t('tyres.dot')} hint={t('tyres.dotHint')}>
+          <input {...field('dot')} inputMode="numeric" maxLength={4} placeholder="2322" />
+        </Field>
+        <Field label={t('tyres.storage')} hint={t('tyres.storageHint')} wide>
+          <input {...field('storage')} />
+        </Field>
+        <Field label={t('common.notes')} wide>
+          <textarea rows={2} {...field('notes')} />
+        </Field>
+        {set && !set.mounted && (
+          <label className="check field-wide">
+            <input type="checkbox" checked={v.retired} onChange={(e) => setV((x) => ({ ...x, retired: e.target.checked }))} />
+            {t('tyres.retired')}
+          </label>
+        )}
+        <Actions busy={busy} onClose={onClose} onDelete={onDelete} />
+      </form>
+    </Modal>
+  )
+}
+
+/**
+ * Fitting a set (the one fitted before goes to storage) or swapping front and
+ * rear of the fitted one. A cost, if entered, is also saved as an expense.
+ */
+export function TyreEventForm({
+  vehicle,
+  kind,
+  sets,
+  setId,
+  onSaved,
+  onClose,
+}: {
+  vehicle: Vehicle
+  kind: 'mount' | 'rotate'
+  sets: TyreSet[]
+  setId: number
+  onSaved: () => void
+  onClose: () => void
+}) {
+  const { t, locale } = useI18n()
+  const { toast, fail } = useUI()
+  const choices = sets.filter((s) => kind === 'rotate' || (!s.mounted && !s.retired))
+  const [sid, setSid] = useState(String(setId))
+  const [date, setDate] = useState(today())
+  const [odometer, setOdometer] = useState('')
+  const [rotated, setRotated] = useState(false)
+  const [cost, setCost] = useState('')
+  const [vendor, setVendor] = useState('')
+  const [notes, setNotes] = useState('')
+  const { busy, run } = useSubmit()
+  const set = sets.find((s) => s.id === Number(sid))
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const km = parseNumber(odometer)
+    const cents = parseCents(cost)
+    if (!checkNum(km, true) || !checkNum(cents, false)) return fail(new Error(t('err.number')))
+    const body: TyreEventInput = { set_id: Number(sid), kind, date, odometer: Math.round(km!), notes }
+    run(async () => {
+      await api.post(`/api/vehicles/${vehicle.id}/tyre-events`, body)
+      if (kind === 'mount' && rotated) await api.post(`/api/vehicles/${vehicle.id}/tyre-events`, { ...body, kind: 'rotate', notes: '' })
+      if (cents !== null) {
+        const expense: ExpenseInput = {
+          date,
+          category: 'tyres',
+          description: kind === 'mount' && set ? t('tyres.expenseMount', { set: tyreLabel(set, t) }) : t('tyres.expenseRotate'),
+          amount_cents: cents,
+          odometer: body.odometer,
+          vendor,
+          valid_until: null,
+          notes: '',
+        }
+        await api.post(`/api/vehicles/${vehicle.id}/expenses`, expense)
+      }
+      toast(t('common.saved'))
+      onSaved()
+    })
+  }
+
+  return (
+    <Modal title={kind === 'mount' ? t('tyres.mountTitle') : t('tyres.rotateTitle')} onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        {kind === 'mount' ? (
+          <Field label={t('tyres.set')} wide>
+            <select value={sid} onChange={(e) => setSid(e.target.value)}>
+              {choices.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {tyreLabel(s, t)}
+                  {s.size && ` (${s.size})`}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : (
+          set && <p className="field-wide muted">{tyreLabel(set, t)}</p>
+        )}
+        <Field label={t('common.date')}>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        </Field>
+        <Field label={t('common.km')} hint={vehicle.current_km !== null ? t('refuel.odometerHint', { km: num(vehicle.current_km, locale) }) : undefined}>
+          <NumInput value={odometer} onChange={setOdometer} required autoFocus />
+        </Field>
+        {kind === 'mount' && !twoWheels(vehicle.kind) && (
+          <label className="check field-wide">
+            <input type="checkbox" checked={rotated} onChange={(e) => setRotated(e.target.checked)} />
+            {t('tyres.rotatedToo')}
+          </label>
+        )}
+        <Field label={`${t('tyres.cost')} (€)`} hint={t('tyres.costHint')}>
+          <NumInput decimal value={cost} onChange={setCost} placeholder={t('common.optional')} />
+        </Field>
+        <Field label={t('expense.vendor')}>
+          <input value={vendor} onChange={(e) => setVendor(e.target.value)} />
+        </Field>
+        <Field label={t('common.notes')} wide>
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Field>
+        <Actions busy={busy} onClose={onClose} />
       </form>
     </Modal>
   )

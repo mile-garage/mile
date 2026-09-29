@@ -609,3 +609,49 @@ func (s *Server) testNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, res)
 }
+
+// ---- tyres ----
+
+func (s *Server) listTyres(w http.ResponseWriter, r *http.Request, id int64) {
+	v, err := s.store.GetVehicle(userOf(r).ID, id)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	respond(w)(s.store.Tyres(v))
+}
+
+func (s *Server) createTyreSet(w http.ResponseWriter, r *http.Request, id int64) {
+	var in store.TyreSetInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	sid, err := s.store.CreateTyreSet(id, in)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, map[string]int64{"id": sid})
+}
+
+func (s *Server) updateTyreSet(w http.ResponseWriter, r *http.Request, id int64) {
+	var in store.TyreSetInput
+	if readJSON(w, r, &in) {
+		done(w, s.store.UpdateTyreSet(id, in))
+	}
+}
+
+func (s *Server) deleteTyreSet(w http.ResponseWriter, r *http.Request, id int64) {
+	done(w, s.store.DeleteTyreSet(id))
+}
+
+func (s *Server) createTyreEvent(w http.ResponseWriter, r *http.Request, id int64) {
+	var in store.TyreEventInput
+	if readJSON(w, r, &in) {
+		respond(w)(s.store.CreateTyreEvent(id, in))
+	}
+}
+
+func (s *Server) deleteTyreEvent(w http.ResponseWriter, r *http.Request, id int64) {
+	done(w, s.store.DeleteTyreEvent(id))
+}

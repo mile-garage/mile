@@ -141,6 +141,34 @@ func (s *Store) vehicleDeadlines(v *Vehicle, today time.Time) ([]deadlines.Deadl
 			out = append(out, d)
 		}
 	}
+
+	// tyres: the seasonal change, and swapping front and rear of the set fitted
+	t, err := s.MountedTyres(v)
+	if err != nil || t == nil {
+		return out, err
+	}
+	if since := parseOpt(t.MountedSince); since != nil {
+		if due, fit, ok := deadlines.NextTyreChange(deadlines.TyreSeason(t.Season), *since, today); ok {
+			out = append(out, deadlines.TyreChangeDeadline(t.ID, fit, due, today))
+		}
+	}
+	if v.TyreRotationKm != nil && v.CurrentKm != nil {
+		since := t.MountedSince
+		if t.LastRotation != nil && *t.LastRotation > *since {
+			since = t.LastRotation
+		}
+		points, err := s.kmPoints(v)
+		if err != nil {
+			return nil, err
+		}
+		in := deadlines.ServiceInput{IntervalKm: *v.TyreRotationKm, LastDate: parseOpt(since), LastKm: ptr(*v.CurrentKm - t.KmSinceRotation),
+			CurrentKm: v.CurrentKm, KmPerDay: deadlines.KmPerDay(points, today)}
+		if sd, ok := deadlines.NextService(in, today); ok {
+			d := deadlines.ServiceDeadline(deadlines.TyreRotation, sd, in.IntervalKm, today)
+			d.RefID = t.ID
+			out = append(out, d)
+		}
+	}
 	return out, nil
 }
 
@@ -189,7 +217,8 @@ func (s *Store) kmPoints(v *Vehicle) ([]deadlines.KmPoint, error) {
 	rows, err := s.DB.Query(`
 		SELECT date, odometer FROM refuels WHERE vehicle_id = ?1
 		UNION ALL SELECT date, odometer FROM expenses WHERE vehicle_id = ?1 AND odometer IS NOT NULL
-		UNION ALL SELECT date, km FROM odometer_readings WHERE vehicle_id = ?1`, v.ID)
+		UNION ALL SELECT date, km FROM odometer_readings WHERE vehicle_id = ?1
+		UNION ALL SELECT date, odometer FROM tyre_events WHERE vehicle_id = ?1`, v.ID)
 	if err != nil {
 		return nil, err
 	}

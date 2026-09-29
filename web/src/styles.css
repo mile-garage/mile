@@ -698,6 +698,36 @@ p {
   flex: 1;
   color: var(--muted);
 }
+.pill-retired {
+  color: var(--muted);
+  background: var(--bg);
+}
+.policy.retired {
+  opacity: 0.75;
+}
+.tyre-history {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.tyre-history li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.tyre-history li + li {
+  border-top: 1px solid var(--border);
+}
+.tyre-event {
+  flex: 1;
+  min-width: 0;
+}
+.tyre-event small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
 .notes {
   white-space: pre-wrap;
   color: var(--muted);

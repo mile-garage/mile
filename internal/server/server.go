@@ -101,6 +101,13 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /api/policies/{id}/resume", s.record("policies", s.resumePolicy))
 	api.HandleFunc("DELETE /api/policies/{id}/suspensions/{sid}", s.record("policies", s.deleteSuspension))
 
+	api.HandleFunc("GET /api/vehicles/{id}/tyres", s.vehicle(store.RoleViewer, s.listTyres))
+	api.HandleFunc("POST /api/vehicles/{id}/tyre-sets", s.vehicle(store.RoleEditor, s.createTyreSet))
+	api.HandleFunc("PUT /api/tyre-sets/{id}", s.record("tyre_sets", s.updateTyreSet))
+	api.HandleFunc("DELETE /api/tyre-sets/{id}", s.record("tyre_sets", s.deleteTyreSet))
+	api.HandleFunc("POST /api/vehicles/{id}/tyre-events", s.vehicle(store.RoleEditor, s.createTyreEvent))
+	api.HandleFunc("DELETE /api/tyre-events/{id}", s.record("tyre_events", s.deleteTyreEvent))
+
 	api.HandleFunc("GET /api/vehicles/{id}/photos", s.vehicle(store.RoleViewer, s.listPhotos))
 	api.HandleFunc("POST /api/vehicles/{id}/attachments", s.vehicle(store.RoleEditor, s.uploadAttachment))
 	api.HandleFunc("GET /api/attachments/{id}", s.getAttachment)

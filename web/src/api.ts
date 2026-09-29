@@ -60,6 +60,9 @@ export interface User {
 
 export type Role = 'owner' | 'editor' | 'viewer'
 export type VehicleKind = 'car' | 'motorcycle' | 'moped' | 'van' | 'truck' | 'other'
+
+/** Motorcycles and mopeds: front and rear tyres differ, they are never rotated. */
+export const twoWheels = (k: VehicleKind) => k === 'motorcycle' || k === 'moped'
 export type FuelType = 'petrol' | 'diesel' | 'lpg' | 'cng' | 'hybrid' | 'electric' | 'other'
 export type InspectionRule = 'standard' | 'annual' | 'none'
 
@@ -82,6 +85,7 @@ export interface VehicleInput {
   service_interval_months: number | null
   oil_interval_km: number | null
   oil_interval_months: number | null
+  tyre_rotation_km: number | null
   notes: string
 }
 
@@ -95,7 +99,7 @@ export interface Vehicle extends VehicleInput {
   updated_at: string
 }
 
-export type DeadlineKind = 'inspection' | 'road_tax' | 'insurance' | 'service' | 'oil_change' | 'reminder'
+export type DeadlineKind = 'inspection' | 'road_tax' | 'insurance' | 'service' | 'oil_change' | 'tyre_change' | 'tyre_rotation' | 'reminder'
 export type DeadlineStatus = 'overdue' | 'grace' | 'due_soon' | 'ok' | 'suspended'
 
 export interface Deadline {
@@ -104,6 +108,7 @@ export interface Deadline {
   vehicle_name?: string
   ref_id?: number
   title?: string
+  season?: 'summer' | 'winter'
   due?: string
   days_left?: number
   due_km?: number
@@ -306,4 +311,46 @@ export interface NotificationInput {
   ntfy_token?: string
   ntfy_enabled: boolean
   days: number[]
+}
+
+export type TyreSeason = 'summer' | 'winter' | 'all_season'
+
+export interface TyreSetInput {
+  season: TyreSeason
+  brand: string
+  model: string
+  size: string
+  /** DOT date code, week and year: "2322" */
+  dot: string
+  storage: string
+  notes: string
+  retired: boolean
+}
+
+export interface TyreSet extends TyreSetInput {
+  id: number
+  vehicle_id: number
+  mounted: boolean
+  mounted_since: string | null
+  last_rotation: string | null
+  km: number
+  km_since_rotation: number
+}
+
+export interface TyreEventInput {
+  set_id: number
+  kind: 'mount' | 'rotate'
+  date: string
+  odometer: number
+  notes: string
+}
+
+export interface TyreEvent extends TyreEventInput {
+  id: number
+  vehicle_id: number
+}
+
+export interface Tyres {
+  sets: TyreSet[]
+  events: TyreEvent[]
 }

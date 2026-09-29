@@ -63,6 +63,10 @@ func TestLine(t *testing.T) {
 	if got := Line(g, "it"); got != "Scadenza assicurazione – Vespa: scade il 20/09/2026 · scaduta, tolleranza fino al 05/10/2026" {
 		t.Errorf("grace: %s", got)
 	}
+	ty := deadlines.Deadline{Kind: deadlines.TyreChange, Season: "winter", VehicleName: "Panda", Due: "2026-11-15", DaysLeft: ip(47), Status: deadlines.OK}
+	if got := Line(ty, "en"); got != "Fit winter tyres – Panda: by 15 Nov 2026 · in 47 days" {
+		t.Errorf("tyres: %s", got)
+	}
 	m := Digest([]deadlines.Deadline{d, g}, "it", "")
 	if m.Title != "MILE: 2 scadenze da controllare" || !m.Urgent || len(m.Lines) != 2 {
 		t.Errorf("digest: %+v", m)

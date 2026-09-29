@@ -25,7 +25,7 @@ import { DateForm, ExpenseForm, PolicyForm, RefuelForm, ReminderForm } from '../
 import { Icon } from '../components/Icon'
 import { Empty, Loading, StatusPill, useLoad, useUI } from '../components/ui'
 
-interface TabProps {
+export interface TabProps {
   vehicle: Vehicle
   canEdit: boolean
   version: number
@@ -56,6 +56,7 @@ export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabPr
 
   const open = async (d: Deadline) => {
     if (d.kind === 'insurance') return goTo('insurance')
+    if (d.kind === 'tyre_change' || d.kind === 'tyre_rotation') return goTo('tyres')
     if (d.kind === 'reminder') {
       try {
         const rs = await api.get<Reminder[]>(`/api/reminders?vehicle=${vehicle.id}`)

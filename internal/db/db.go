@@ -251,6 +251,42 @@ CREATE TABLE notification_log (
 	PRIMARY KEY (user_id, deadline_key, stage)
 );
 `,
+	`
+-- Tyres: the sets of a vehicle, and when they were fitted or rotated.
+ALTER TABLE vehicles ADD COLUMN tyre_rotation_km INTEGER;
+
+CREATE TABLE tyre_sets (
+	id          INTEGER PRIMARY KEY,
+	vehicle_id  INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+	season      TEXT NOT NULL CHECK (season IN ('summer','winter','all_season')),
+	brand       TEXT NOT NULL DEFAULT '',
+	model       TEXT NOT NULL DEFAULT '',
+	size        TEXT NOT NULL DEFAULT '',
+	-- DOT date code, week and year of production: '2322'
+	dot         TEXT NOT NULL DEFAULT '',
+	-- where the set is kept when not fitted, e.g. the tyre shop
+	storage     TEXT NOT NULL DEFAULT '',
+	notes       TEXT NOT NULL DEFAULT '',
+	retired     INTEGER NOT NULL DEFAULT 0,
+	created_at  TEXT NOT NULL,
+	updated_at  TEXT NOT NULL
+);
+CREATE INDEX tyre_sets_vehicle ON tyre_sets(vehicle_id);
+
+-- mount: the set is fitted, and the one fitted before goes to storage;
+-- rotate: front and rear tyres of the set are swapped.
+CREATE TABLE tyre_events (
+	id          INTEGER PRIMARY KEY,
+	vehicle_id  INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+	set_id      INTEGER NOT NULL REFERENCES tyre_sets(id) ON DELETE CASCADE,
+	kind        TEXT NOT NULL CHECK (kind IN ('mount','rotate')),
+	date        TEXT NOT NULL,
+	odometer    INTEGER NOT NULL,
+	notes       TEXT NOT NULL DEFAULT '',
+	created_at  TEXT NOT NULL
+);
+CREATE INDEX tyre_events_vehicle ON tyre_events(vehicle_id, date);
+`,
 }
 
 // migrate applies the pending migrations on a single connection with

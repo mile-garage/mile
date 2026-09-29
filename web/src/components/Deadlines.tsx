@@ -17,6 +17,7 @@ export function relativeDays(n: number, t: T): string {
 export function deadlineTitle(d: Deadline, t: T): string {
   if (d.kind === 'reminder') return d.title ?? ''
   if (d.kind === 'inspection' && d.first) return t('deadline.inspection.first')
+  if (d.kind === 'tyre_change') return t(d.season === 'summer' ? 'deadline.tyre_change.summer' : 'deadline.tyre_change.winter')
   return t(`deadline.${d.kind}`)
 }
 
@@ -56,6 +57,7 @@ export function DeadlineRow({
         </div>
         <div className="deadline-detail">{details.join(' · ')}</div>
         {d.estimated && <div className="deadline-note">{t('deadline.estimated')}</div>}
+        {d.kind === 'tyre_change' && <div className="deadline-note">{t(d.season === 'summer' ? 'deadline.tyreRule.summer' : 'deadline.tyreRule.winter')}</div>}
       </div>
       <div className="deadline-side">
         <StatusPill status={d.status} label={t(`status.${d.status}`)} />

@@ -3,7 +3,7 @@
 
 // Package deadlines computes when each vehicle obligation falls due, following
 // the Italian rules for inspection (revisione), road tax (bollo), insurance
-// with suspensions, and scheduled service (tagliando).
+// with suspensions, scheduled service (tagliando) and seasonal tyres.
 //
 // Every function is pure: dates are civil dates at midnight UTC, "today" is
 // passed in by the caller.
@@ -27,12 +27,14 @@ const InsuranceGraceDays = 15
 type Kind string
 
 const (
-	Inspection Kind = "inspection"
-	RoadTax    Kind = "road_tax"
-	Insurance  Kind = "insurance"
-	Service    Kind = "service"
-	OilChange  Kind = "oil_change"
-	Reminder   Kind = "reminder"
+	Inspection   Kind = "inspection"
+	RoadTax      Kind = "road_tax"
+	Insurance    Kind = "insurance"
+	Service      Kind = "service"
+	OilChange    Kind = "oil_change"
+	TyreChange   Kind = "tyre_change"
+	TyreRotation Kind = "tyre_rotation"
+	Reminder     Kind = "reminder"
 )
 
 type Status string
@@ -66,8 +68,9 @@ type Deadline struct {
 	Kind        Kind   `json:"kind"`
 	VehicleID   int64  `json:"vehicle_id,omitempty"`
 	VehicleName string `json:"vehicle_name,omitempty"`
-	RefID       int64  `json:"ref_id,omitempty"` // policy or reminder
+	RefID       int64  `json:"ref_id,omitempty"` // policy, reminder or tyre set
 	Title       string `json:"title,omitempty"`  // reminders only
+	Season      string `json:"season,omitempty"` // tyre change: the tyres to fit
 	Due         string `json:"due,omitempty"`    // empty when only a km limit is known
 	DaysLeft    *int   `json:"days_left,omitempty"`
 	DueKm       *int64 `json:"due_km,omitempty"`
@@ -275,6 +278,48 @@ func ServiceStatus(s ServiceDue, intervalKm int64, today time.Time) (Status, *in
 	return st, dl
 }
 
+// ---- seasonal tyres ----
+
+type TyreSeason string
+
+const (
+	Summer    TyreSeason = "summer"
+	Winter    TyreSeason = "winter"
+	AllSeason TyreSeason = "all_season"
+)
+
+func date(y int, m time.Month, d int) time.Time { return time.Date(y, m, d, 0, 0, 0, 0, time.UTC) }
+
+// NextTyreChange: in Italy winter tyres (or chains on board) are required from
+// 15 November to 15 April, and may be fitted from 15 October; winter tyres
+// with a speed index lower than the one in the registration document must be
+// removed by 15 May. All-season tyres need no change.
+//
+// The change is due by the first deadline after the tyres were fitted (since);
+// a missed one stays overdue until the following season starts (16 April for
+// summer tyres, 15 October for winter ones), then the next deadline applies.
+func NextTyreChange(fitted TyreSeason, since, today time.Time) (due time.Time, fit TyreSeason, ok bool) {
+	y := today.Year()
+	switch fitted {
+	case Summer:
+		due, fit = date(y, time.November, 15), Winter
+		if today.Before(date(y, time.April, 16)) {
+			due = date(y-1, time.November, 15)
+		}
+	case Winter:
+		due, fit = date(y, time.May, 15), Summer
+		if !today.Before(date(y, time.October, 15)) {
+			due = date(y+1, time.May, 15)
+		}
+	default:
+		return time.Time{}, "", false
+	}
+	if since.After(due) {
+		due = due.AddDate(1, 0, 0)
+	}
+	return due, fit, true
+}
+
 // ---- average km per day ----
 
 type KmPoint struct {
@@ -348,6 +393,12 @@ func ServiceDeadline(kind Kind, s ServiceDue, intervalKm int64, today time.Time)
 	if s.Due != nil {
 		d.Due = Format(*s.Due)
 	}
+	return d
+}
+
+func TyreChangeDeadline(setID int64, fit TyreSeason, due, today time.Time) Deadline {
+	d := dateDeadline(TyreChange, due, today)
+	d.RefID, d.Season = setID, string(fit)
 	return d
 }
 

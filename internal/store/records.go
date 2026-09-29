@@ -21,7 +21,7 @@ var expenseCategories = map[string]bool{
 // RecordVehicle returns the vehicle of a record in one of the vehicle tables.
 func (s *Store) RecordVehicle(table string, id int64) (int64, error) {
 	switch table {
-	case "expenses", "refuels", "odometer_readings", "policies", "attachments":
+	case "expenses", "refuels", "odometer_readings", "policies", "attachments", "tyre_sets", "tyre_events":
 	default:
 		panic("RecordVehicle: unknown table " + table)
 	}

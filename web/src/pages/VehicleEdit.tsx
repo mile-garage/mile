@@ -3,7 +3,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { api, type FuelType, type InspectionRule, type Member, type Role, type Vehicle, type VehicleInput, type VehicleKind } from '../api'
+import { api, twoWheels, type FuelType, type InspectionRule, type Member, type Role, type Vehicle, type VehicleInput, type VehicleKind } from '../api'
 import { PageHead, useSession } from '../App'
 import { useI18n } from '../i18n'
 import { monthName, numInput, parseNumber } from '../format'
@@ -33,6 +33,7 @@ const empty: VehicleInput = {
   service_interval_months: null,
   oil_interval_km: null,
   oil_interval_months: null,
+  tyre_rotation_km: null,
   notes: '',
 }
 
@@ -56,6 +57,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     service_interval_months: numInput(vehicle?.service_interval_months),
     oil_interval_km: numInput(vehicle?.oil_interval_km),
     oil_interval_months: numInput(vehicle?.oil_interval_months),
+    tyre_rotation_km: numInput(vehicle?.tyre_rotation_km),
   })
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof VehicleInput>(k: K, val: VehicleInput[K]) => setV((x) => ({ ...x, [k]: val }))
@@ -72,6 +74,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     }
     setBusy(true)
     try {
+      if (twoWheels(v.kind)) parsed.tyre_rotation_km = null
       const body = { ...v, ...parsed }
       const saved = vehicle ? await api.put<Vehicle>(`/api/vehicles/${vehicle.id}`, body) : await api.post<Vehicle>('/api/vehicles', body)
       toast(t('common.saved'))
@@ -204,6 +207,11 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
             <Field label={t('vehicle.oilMonths')}>
               <input inputMode="numeric" value={nums.oil_interval_months} onChange={(e) => setNum('oil_interval_months', e.target.value)} placeholder="12" />
             </Field>
+            {!twoWheels(v.kind) && (
+              <Field label={t('vehicle.tyreRotationKm')} hint={t('vehicle.tyreRotationHint')} wide>
+                <input inputMode="numeric" value={nums.tyre_rotation_km} onChange={(e) => setNum('tyre_rotation_km', e.target.value)} placeholder="10000" />
+              </Field>
+            )}
             <Field label={t('common.notes')} wide>
               <textarea rows={3} value={v.notes} onChange={(e) => set('notes', e.target.value)} />
             </Field>

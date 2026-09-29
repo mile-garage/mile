@@ -17,18 +17,24 @@ func Locale(l string) string {
 
 var titles = map[string]map[Kind]string{
 	"it": {
-		Inspection: "Revisione",
-		RoadTax:    "Bollo",
-		Insurance:  "Scadenza assicurazione",
-		Service:    "Tagliando",
-		OilChange:  "Cambio olio",
+		Inspection:             "Revisione",
+		RoadTax:                "Bollo",
+		Insurance:              "Scadenza assicurazione",
+		Service:                "Tagliando",
+		OilChange:              "Cambio olio",
+		TyreRotation:           "Inversione gomme",
+		TyreChange + "_winter": "Montare le gomme invernali",
+		TyreChange + "_summer": "Montare le gomme estive",
 	},
 	"en": {
-		Inspection: "Inspection",
-		RoadTax:    "Road tax",
-		Insurance:  "Insurance expiry",
-		Service:    "Service",
-		OilChange:  "Oil change",
+		Inspection:             "Inspection",
+		RoadTax:                "Road tax",
+		Insurance:              "Insurance expiry",
+		Service:                "Service",
+		OilChange:              "Oil change",
+		TyreRotation:           "Tyre rotation",
+		TyreChange + "_winter": "Fit winter tyres",
+		TyreChange + "_summer": "Fit summer tyres",
 	},
 }
 
@@ -37,7 +43,11 @@ func (d Deadline) TitleIn(locale string) string {
 	if d.Title != "" {
 		return d.Title
 	}
-	return titles[Locale(locale)][d.Kind]
+	k := d.Kind
+	if k == TyreChange {
+		k += Kind("_" + d.Season)
+	}
+	return titles[Locale(locale)][k]
 }
 
 // FormatDateIn formats a YYYY-MM-DD date for people: 31/10/2026 or 31 Oct 2026.

@@ -281,3 +281,73 @@ func TestNotificationSettings(t *testing.T) {
 		t.Error("token leaked to the browser")
 	}
 }
+
+func TestTyres(t *testing.T) {
+	ts := newServer(t)
+	c := newClient(t, ts)
+	c.must("POST", "/api/setup", map[string]string{"username": "gabri", "password": "password123"}, nil)
+	var v store.Vehicle
+	c.must("POST", "/api/vehicles", map[string]any{"name": "Panda", "kind": "car", "fuel_type": "petrol",
+		"registration_date": "2020-03-01", "initial_odometer": 20000, "tyre_rotation_km": 10000}, &v)
+	vp := "/api/vehicles/" + itoa(v.ID)
+
+	var summer, winter struct{ ID int64 }
+	c.must("POST", vp+"/tyre-sets", map[string]any{"season": "summer", "brand": "Michelin", "size": "175/65 R14"}, &summer)
+	c.must("POST", vp+"/tyre-sets", map[string]any{"season": "winter", "brand": "Nokian"}, &winter)
+	if code := c.do("POST", vp+"/tyre-sets", map[string]any{"season": "spring"}, nil); code != 400 {
+		t.Fatalf("invalid season: %d", code)
+	}
+	event := func(set int64, kind, date string, km int) {
+		c.must("POST", vp+"/tyre-events", map[string]any{"set_id": set, "kind": kind, "date": date, "odometer": km}, nil)
+	}
+	event(summer.ID, "mount", "2025-04-20", 20000)
+	event(summer.ID, "rotate", "2025-09-01", 25000)
+	event(winter.ID, "mount", "2025-11-10", 27000)
+	event(winter.ID, "rotate", "2025-11-10", 27000) // swapped when fitted
+	event(summer.ID, "mount", "2026-04-20", 32000)
+	c.must("POST", vp+"/odometer", map[string]any{"date": "2026-09-01", "km": 36000}, nil)
+
+	var ty store.Tyres
+	c.must("GET", vp+"/tyres", nil, &ty)
+	if len(ty.Sets) != 2 || len(ty.Events) != 5 || ty.Events[0].Date != "2026-04-20" {
+		t.Fatalf("tyres: %+v", ty)
+	}
+	s, w := ty.Sets[0], ty.Sets[1]
+	if !s.Mounted || s.ID != summer.ID || *s.MountedSince != "2026-04-20" || s.Km != 11000 || s.KmSinceRotation != 6000 {
+		t.Errorf("summer: %+v", s)
+	}
+	if w.Mounted || w.Km != 5000 || w.KmSinceRotation != 5000 {
+		t.Errorf("winter: %+v", w)
+	}
+
+	var ds []map[string]any
+	c.must("GET", vp+"/deadlines", nil, &ds)
+	var change, rotation map[string]any
+	for _, d := range ds {
+		switch d["kind"] {
+		case "tyre_change":
+			change = d
+		case "tyre_rotation":
+			rotation = d
+		}
+	}
+	if change == nil || change["season"] != "winter" || change["ref_id"] != float64(summer.ID) {
+		t.Errorf("tyre change: %v", change)
+	}
+	if rotation == nil || rotation["due_km"] != float64(40000) || rotation["km_left"] != float64(4000) {
+		t.Errorf("rotation: %v", rotation)
+	}
+
+	if code := c.do("PUT", "/api/tyre-sets/"+itoa(summer.ID), map[string]any{"season": "summer", "retired": true}, nil); code != 400 {
+		t.Errorf("retiring the fitted set: %d", code)
+	}
+	c.must("PUT", "/api/tyre-sets/"+itoa(winter.ID), map[string]any{"season": "winter", "retired": true}, nil)
+	if code := c.do("POST", vp+"/tyre-events", map[string]any{"set_id": winter.ID, "kind": "mount", "date": "2026-11-01", "odometer": 38000}, nil); code != 400 {
+		t.Errorf("fitting a retired set: %d", code)
+	}
+	c.must("DELETE", "/api/tyre-sets/"+itoa(winter.ID), nil, nil)
+	c.must("GET", vp+"/tyres", nil, &ty)
+	if len(ty.Sets) != 1 || len(ty.Events) != 3 {
+		t.Errorf("after delete: %+v", ty)
+	}
+}

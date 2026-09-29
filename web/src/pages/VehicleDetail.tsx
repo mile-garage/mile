@@ -12,8 +12,9 @@ import { OdometerForm } from '../components/Forms'
 import { Loading, useLoad } from '../components/ui'
 import { VehicleCover } from './Vehicles'
 import { DeadlinesTab, ExpensesTab, FuelTab, InsuranceTab, PhotosTab, SummaryTab } from './VehicleTabs'
+import { TyresTab } from './Tyres'
 
-const tabs = ['deadlines', 'expenses', 'fuel', 'insurance', 'photos', 'summary'] as const
+const tabs = ['deadlines', 'expenses', 'fuel', 'insurance', 'tyres', 'photos', 'summary'] as const
 type Tab = (typeof tabs)[number]
 
 export function VehicleDetail() {
@@ -84,6 +85,7 @@ export function VehicleDetail() {
       {tab === 'expenses' && <ExpensesTab {...props} />}
       {tab === 'fuel' && <FuelTab {...props} />}
       {tab === 'insurance' && <InsuranceTab {...props} />}
+      {tab === 'tyres' && <TyresTab {...props} />}
       {tab === 'photos' && <PhotosTab {...props} />}
       {tab === 'summary' && <SummaryTab {...props} />}
 
