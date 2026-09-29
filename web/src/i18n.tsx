@@ -15,6 +15,7 @@ const it = {
 
   'common.save': 'Salva',
   'common.cancel': 'Annulla',
+  'common.retry': 'Riprova',
   'common.delete': 'Elimina',
   'common.edit': 'Modifica',
   'common.add': 'Aggiungi',
@@ -492,6 +493,7 @@ const en: Record<Key, string> = {
 
   'common.save': 'Save',
   'common.cancel': 'Cancel',
+  'common.retry': 'Try again',
   'common.delete': 'Delete',
   'common.edit': 'Edit',
   'common.add': 'Add',

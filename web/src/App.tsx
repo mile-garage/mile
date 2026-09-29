@@ -34,7 +34,7 @@ export function Root() {
   )
 }
 
-type Phase = { k: 'loading' } | { k: 'setup' } | { k: 'login' } | { k: 'in'; user: User }
+type Phase = { k: 'loading' } | { k: 'offline' } | { k: 'setup' } | { k: 'login' } | { k: 'in'; user: User }
 
 function AuthGate() {
   const { setLocale } = useI18n()
@@ -46,13 +46,22 @@ function AuthGate() {
     setPhase({ k: 'in', user: u })
   }
 
-  useEffect(() => {
+  const load = () => {
+    setPhase({ k: 'loading' })
     const status = api.get<Status>('/api/status').catch(() => null)
     status.then((s) => setSso(s?.sso ?? ''))
     api
       .get<User>('/api/me')
       .then(enter)
-      .catch(() => status.then((s) => setPhase({ k: s?.setup_required ? 'setup' : 'login' })))
+      .catch((e) => {
+        // Opened from the home screen without a connection: the interface comes from the service worker.
+        if (e instanceof ApiError && e.code === 'offline') setPhase({ k: 'offline' })
+        else status.then((s) => setPhase({ k: s?.setup_required ? 'setup' : 'login' }))
+      })
+  }
+
+  useEffect(() => {
+    load()
     const onUnauth = () => setPhase({ k: 'login' })
     window.addEventListener('mile:unauthorized', onUnauth)
     return () => window.removeEventListener('mile:unauthorized', onUnauth)
@@ -66,6 +75,8 @@ function AuthGate() {
           <Spinner />
         </div>
       )
+    case 'offline':
+      return <Offline onRetry={load} />
     case 'setup':
       return <AuthForm setup sso={sso} onDone={enter} />
     case 'login':
@@ -118,6 +129,30 @@ function Layout() {
         <Outlet />
       </main>
       <nav className="bottomnav">{nav}</nav>
+    </div>
+  )
+}
+
+function Offline({ onRetry }: { onRetry: () => void }) {
+  const { t } = useI18n()
+  useEffect(() => {
+    window.addEventListener('online', onRetry)
+    return () => window.removeEventListener('online', onRetry)
+  }, [onRetry])
+  return (
+    <div className="center-page">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <img src="/logo-m.png" alt="" width="59" height="56" />
+          <div>
+            <h1>MILE</h1>
+            <p className="muted">{t('err.offline')}</p>
+          </div>
+        </div>
+        <button className="btn btn-primary btn-block" onClick={onRetry}>
+          {t('common.retry')}
+        </button>
+      </div>
     </div>
   )
 }

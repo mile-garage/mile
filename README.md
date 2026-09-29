@@ -21,7 +21,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 - **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
 - **Multi-user**: share a vehicle with your family as owner, editor or read-only. Single sign-on with Authentik, Authelia, Keycloak or any OpenID Connect provider.
 - **Your data, in and out**: import from [Fuelio](https://www.fuel.io) and [LubeLogger](https://lubelogger.com); export everything as CSV files ready for Excel, with the attachments if you want.
-- **Mobile first**: installable as an app from the browser (PWA). Italian and English, light and dark theme.
+- **Mobile first**: installable as an app from the browser (PWA), and it opens even without a connection. Italian and English, light and dark theme.
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
 
