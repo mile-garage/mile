@@ -44,12 +44,22 @@ export function Vehicles() {
   )
 }
 
+/** Icon of the kind of vehicle, shown when it has no photo. */
+const kindIcons: Record<Vehicle['kind'], string> = {
+  car: 'car',
+  motorcycle: 'motorcycle',
+  moped: 'moped',
+  van: 'van',
+  truck: 'truck',
+  other: 'vehicle',
+}
+
 export function VehicleCover({ v, className = 'cover' }: { v: Vehicle; className?: string }) {
   return v.cover_id ? (
     <img className={className} src={fileUrl(v.cover_id)} alt="" loading="lazy" />
   ) : (
     <div className={`${className} cover-empty`}>
-      <Icon name="car" size={40} />
+      <Icon name={kindIcons[v.kind] ?? 'vehicle'} size={64} />
     </div>
   )
 }
