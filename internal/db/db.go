@@ -287,6 +287,13 @@ CREATE TABLE tyre_events (
 );
 CREATE INDEX tyre_events_vehicle ON tyre_events(vehicle_id, date);
 `,
+	`
+-- Login with OpenID Connect: the identity linked to the user (issuer and
+-- subject of the ID token). password_hash is '' for users without a password.
+ALTER TABLE users ADD COLUMN oidc_issuer TEXT;
+ALTER TABLE users ADD COLUMN oidc_subject TEXT;
+CREATE UNIQUE INDEX users_oidc ON users(oidc_issuer, oidc_subject) WHERE oidc_subject IS NOT NULL;
+`,
 }
 
 // migrate applies the pending migrations on a single connection with

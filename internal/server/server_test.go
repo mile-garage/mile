@@ -27,6 +27,12 @@ type client struct {
 }
 
 func newServer(t *testing.T) *httptest.Server {
+	ts := httptest.NewServer(newApp(t).Handler())
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+func newApp(t *testing.T) *Server {
 	dir := t.TempDir()
 	d, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
@@ -35,9 +41,7 @@ func newServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { d.Close() })
 	st := store.New(d, filepath.Join(dir, "files"), time.UTC)
 	static := fstest.MapFS{"index.html": {Data: []byte("<html></html>")}}
-	ts := httptest.NewServer(New("test", st, static, 5).Handler())
-	t.Cleanup(ts.Close)
-	return ts
+	return New("test", st, static, 5)
 }
 
 func newClient(t *testing.T, ts *httptest.Server) *client {

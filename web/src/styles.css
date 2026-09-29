@@ -1185,6 +1185,19 @@ input[type='checkbox'] {
   align-items: center;
   margin-bottom: 4px;
 }
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-or::before,
+.auth-or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
 
 /* ---- toast & spinner ---- */
 

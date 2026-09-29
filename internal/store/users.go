@@ -22,6 +22,8 @@ type User struct {
 	IsAdmin     bool   `json:"is_admin"`
 	Locale      string `json:"locale"`
 	CreatedAt   string `json:"created_at"`
+	HasPassword bool   `json:"has_password"`
+	SSO         bool   `json:"sso"` // linked to an OpenID Connect identity
 }
 
 const (
@@ -33,11 +35,11 @@ var usernameRe = regexp.MustCompile(`^[A-Za-z0-9._@-]{2,64}$`)
 
 var locales = map[string]bool{"": true, "it": true, "en": true}
 
-const userCols = `id, username, display_name, is_admin, locale, created_at`
+const userCols = `id, username, display_name, is_admin, locale, created_at, password_hash != '', oidc_subject IS NOT NULL`
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	var u User
-	err := row.Scan(&u.ID, &u.Username, &u.DisplayName, &u.IsAdmin, &u.Locale, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.DisplayName, &u.IsAdmin, &u.Locale, &u.CreatedAt, &u.HasPassword, &u.SSO)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -82,9 +84,18 @@ func (s *Store) CreateUser(in UserInput) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.insertUser(in, hash, nil)
+}
+
+// insertUser stores a validated user; id links it to an OpenID Connect identity.
+func (s *Store) insertUser(in UserInput, hash string, oidc *OIDCIdentity) (*User, error) {
+	var issuer, subject any
+	if oidc != nil {
+		issuer, subject = oidc.Issuer, oidc.Subject
+	}
 	t := now()
-	res, err := s.DB.Exec(`INSERT INTO users (username, display_name, password_hash, is_admin, locale, ical_token, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, in.Username, in.DisplayName, hash, boolInt(in.IsAdmin), in.Locale, randomToken(24), t, t)
+	res, err := s.DB.Exec(`INSERT INTO users (username, display_name, password_hash, is_admin, locale, ical_token, oidc_issuer, oidc_subject, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, in.Username, in.DisplayName, hash, boolInt(in.IsAdmin), in.Locale, randomToken(24), issuer, subject, t, t)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return nil, invalid("username_taken", "This username is already taken")
@@ -141,7 +152,7 @@ func (s *Store) Authenticate(username, password string) (*User, error) {
 	var id int64
 	var hash string
 	err := s.DB.QueryRow(`SELECT id, password_hash FROM users WHERE username = ?`, Clean(username)).Scan(&id, &hash)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) || hash == "" {
 		bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
 		return nil, ErrNotFound
 	}

@@ -56,6 +56,27 @@ export interface User {
   is_admin: boolean
   locale: '' | Locale
   created_at: string
+  has_password: boolean
+  /** Linked to an account of the login provider (OpenID Connect). */
+  sso: boolean
+}
+
+export interface Status {
+  setup_required: boolean
+  version: string
+  /** Name of the login provider, '' when the login with OpenID Connect is off. */
+  sso: string
+}
+
+/** Reads a query parameter set by a server redirect and removes it from the address bar. */
+export function takeParam(name: string): string | null {
+  const url = new URL(window.location.href)
+  const v = url.searchParams.get(name)
+  if (v !== null) {
+    url.searchParams.delete(name)
+    window.history.replaceState(window.history.state, '', url)
+  }
+  return v
 }
 
 export type Role = 'owner' | 'editor' | 'viewer'

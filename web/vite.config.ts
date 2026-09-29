@@ -12,6 +12,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080',
       '/calendar': 'http://localhost:8080',
+      '/auth': 'http://localhost:8080',
       '/healthz': 'http://localhost:8080',
     },
   },

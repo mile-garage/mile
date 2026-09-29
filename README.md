@@ -19,7 +19,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 - **Photos** of your vehicles, resized in the browser (HEIC from iPhones included).
 - **Calendar feed** (iCal): subscribe from your phone and get deadlines with alerts 7 days and 1 day before.
 - **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
-- **Multi-user**: share a vehicle with your family as owner, editor or read-only.
+- **Multi-user**: share a vehicle with your family as owner, editor or read-only. Single sign-on with Authentik, Authelia, Keycloak or any OpenID Connect provider.
 - **Mobile first**: installable as an app from the browser (PWA). Italian and English, light and dark theme.
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
@@ -84,6 +84,24 @@ Each user enables email and/or ntfy in **Settings › Notifications**. ntfy need
 | `MILE_SMTP_FROM` | | sender, e.g. `MILE <mile@example.com>` |
 | `MILE_SMTP_TLS` | `starttls` | `starttls`, `tls` (implicit, port 465) or `none` |
 
+### Login with Authentik (OpenID Connect)
+
+Users can log in with Authentik, or with any other OpenID Connect provider (Authelia, Keycloak, Pocket ID…). In Authentik:
+
+1. **Applications › Providers › Create › OAuth2/OpenID Provider**: client type *Confidential*, redirect URI `https://mile.example.com/auth/oidc/callback` (your `MILE_BASE_URL` followed by `/auth/oidc/callback`). Pick a **signing key** (e.g. *authentik Self-signed Certificate*): without it, ID tokens are signed with the client secret and MILE rejects them.
+2. **Applications › Applications › Create**: slug `mile`, with the provider above. Bind a group or policy to it to choose who can log in.
+3. Set the variables below. The issuer is `https://auth.example.com/application/o/mile/`, trailing slash included.
+
+| Variable | Default | |
+|---|---|---|
+| `MILE_OIDC_ISSUER` | | provider URL; needs `MILE_BASE_URL` too |
+| `MILE_OIDC_CLIENT_ID` / `MILE_OIDC_CLIENT_SECRET` | | from the provider page (no secret for public clients) |
+| `MILE_OIDC_NAME` | `SSO` | shown on the button: *Log in with Authentik* |
+| `MILE_OIDC_AUTO_REGISTER` | `true` | create a MILE user at the first login; with `false` only linked users can log in |
+| `MILE_OIDC_ADMIN_GROUP` | | members of this group are administrators, checked at every login (needs the `groups` claim) |
+
+At the first login MILE creates the user with the Authentik username, and on a new installation the first user becomes the administrator. **Existing users** log in with their password once and link their account in **Settings › Login with Authentik**: a user with the same name is never linked automatically. Login with a password keeps working, and users created by Authentik can set one in Settings.
+
 **Locked out?** Reset a password from the command line:
 
 ```bash
@@ -109,14 +127,14 @@ npm --prefix web run dev           # http://localhost:5173, API proxied to :8080
 
 Tests: `go test ./...` · Type check: `npm --prefix web run typecheck`
 
-**Stack**: Go standard library + SQLite (`modernc.org/sqlite`, no CGO), React + Vite embedded in the binary, distroless image.
+**Stack**: Go standard library + SQLite (`modernc.org/sqlite`, no CGO) + `go-oidc` for single sign-on, React + Vite embedded in the binary, distroless image.
 
 ```
 cmd/mile/            entry point (serve, healthcheck, reset-password)
 internal/deadlines/  Italian deadline rules (pure functions, tested)
 internal/fuel/       consumption, full-to-full method
 internal/store/      data access and validation
-internal/server/     JSON API, attachments, calendar feed
+internal/server/     JSON API, attachments, calendar feed, OpenID Connect login
 internal/ical/       iCalendar rendering
 web/                 React frontend
 ```
@@ -124,7 +142,6 @@ web/                 React frontend
 ## Roadmap
 
 - More notification channels: Apprise, web push
-- Login with OpenID Connect (Authentik, Authelia, Keycloak…)
 - Import from Fuelio and LubeLogger, CSV export
 - Receipt scanning
 

@@ -46,7 +46,8 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess := current(r)
-	if !s.store.CheckPassword(sess.user.ID, in.Current) {
+	// Users created by the login with OpenID Connect have no password to confirm.
+	if sess.user.HasPassword && !s.store.CheckPassword(sess.user.ID, in.Current) {
 		time.Sleep(500 * time.Millisecond)
 		writeError(w, http.StatusBadRequest, "wrong_password", "The current password is wrong")
 		return

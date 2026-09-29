@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router'
-import { api, type User } from './api'
+import { api, ApiError, takeParam, type Status, type User } from './api'
 import { I18nProvider, useI18n } from './i18n'
 import { Field, Spinner, UIProvider, useUI } from './components/ui'
 import { Icon } from './components/Icon'
@@ -12,6 +12,8 @@ interface Session {
   user: User
   setUser: (u: User) => void
   logout: () => Promise<void>
+  /** Name of the login provider, '' when the login with OpenID Connect is off. */
+  sso: string
 }
 
 const SessionCtx = createContext<Session | null>(null)
@@ -37,6 +39,7 @@ type Phase = { k: 'loading' } | { k: 'setup' } | { k: 'login' } | { k: 'in'; use
 function AuthGate() {
   const { setLocale } = useI18n()
   const [phase, setPhase] = useState<Phase>({ k: 'loading' })
+  const [sso, setSso] = useState('')
 
   const enter = (u: User) => {
     setLocale(u.locale)
@@ -44,15 +47,12 @@ function AuthGate() {
   }
 
   useEffect(() => {
+    const status = api.get<Status>('/api/status').catch(() => null)
+    status.then((s) => setSso(s?.sso ?? ''))
     api
       .get<User>('/api/me')
       .then(enter)
-      .catch(() =>
-        api
-          .get<{ setup_required: boolean }>('/api/status')
-          .then((s) => setPhase({ k: s.setup_required ? 'setup' : 'login' }))
-          .catch(() => setPhase({ k: 'login' })),
-      )
+      .catch(() => status.then((s) => setPhase({ k: s?.setup_required ? 'setup' : 'login' })))
     const onUnauth = () => setPhase({ k: 'login' })
     window.addEventListener('mile:unauthorized', onUnauth)
     return () => window.removeEventListener('mile:unauthorized', onUnauth)
@@ -67,11 +67,12 @@ function AuthGate() {
         </div>
       )
     case 'setup':
-      return <AuthForm setup onDone={enter} />
+      return <AuthForm setup sso={sso} onDone={enter} />
     case 'login':
-      return <AuthForm onDone={enter} />
+      return <AuthForm sso={sso} onDone={enter} />
   }
   const session: Session = {
+    sso,
     user: phase.user,
     setUser: enter,
     logout: async () => {
@@ -121,13 +122,20 @@ function Layout() {
   )
 }
 
-function AuthForm({ setup, onDone }: { setup?: boolean; onDone: (u: User) => void }) {
+function AuthForm({ setup, sso, onDone }: { setup?: boolean; sso: string; onDone: (u: User) => void }) {
   const { t, locale, errorText } = useI18n()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // The login with the provider comes back here with ?sso_error=<code> when it fails.
+  useEffect(() => {
+    const code = takeParam('sso_error')
+    if (code) setError(errorText(new ApiError(0, code, t('err.sso_failed'))))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -176,6 +184,14 @@ function AuthForm({ setup, onDone }: { setup?: boolean; onDone: (u: User) => voi
         <button className="btn btn-primary btn-block" disabled={busy}>
           {busy ? <Spinner small /> : setup ? t('auth.setup.submit') : t('auth.login')}
         </button>
+        {sso && (
+          <>
+            <div className="auth-or">{t('auth.or')}</div>
+            <a className="btn btn-block" href="/auth/oidc/login">
+              {t('auth.sso', { name: sso })}
+            </a>
+          </>
+        )}
       </form>
     </div>
   )

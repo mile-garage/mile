@@ -30,6 +30,7 @@ type Server struct {
 	store     *store.Store
 	static    fs.FS
 	maxUpload int64
+	oidc      *oidcAuth // nil when the login with OpenID Connect is off
 }
 
 // SetNotifier enables the notification settings and the test button.
@@ -57,6 +58,8 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /api/me/notifications", s.getNotifications)
 	api.HandleFunc("PUT /api/me/notifications", s.saveNotifications)
 	api.HandleFunc("POST /api/me/notifications/test", s.testNotifications)
+	api.HandleFunc("POST /api/me/sso", s.linkSSO)
+	api.HandleFunc("DELETE /api/me/sso", s.unlinkSSO)
 	api.HandleFunc("POST /api/logout", s.logout)
 
 	api.HandleFunc("GET /api/users", s.admin(s.listUsers))
@@ -124,6 +127,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/status", s.status)
 	mux.HandleFunc("POST /api/setup", s.setup)
 	mux.HandleFunc("POST /api/login", s.login)
+	mux.HandleFunc("GET /auth/oidc/login", s.oidcLogin)
+	mux.HandleFunc("GET /auth/oidc/callback", s.oidcCallback)
 	mux.HandleFunc("GET /calendar/{token}", s.calendarFeed)
 	mux.Handle("/api/", s.requireAuth(api))
 	mux.Handle("/", s.spa())
@@ -249,7 +254,11 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
-	writeJSON(w, map[string]any{"setup_required": n == 0, "version": s.version})
+	sso := "" // name of the OpenID Connect provider, if enabled
+	if s.oidc != nil {
+		sso = s.oidc.Name
+	}
+	writeJSON(w, map[string]any{"setup_required": n == 0, "version": s.version, "sso": sso})
 }
 
 // setup creates the first user (administrator) on a new installation.

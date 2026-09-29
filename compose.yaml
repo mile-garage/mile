@@ -14,6 +14,11 @@ services:
       # MILE_SMTP_USERNAME: mile@example.com
       # MILE_SMTP_PASSWORD: change-me
       # MILE_SMTP_FROM: MILE <mile@example.com>
+      # Login with Authentik or another OpenID Connect provider (needs MILE_BASE_URL):
+      # MILE_OIDC_ISSUER: https://auth.example.com/application/o/mile/
+      # MILE_OIDC_CLIENT_ID: change-me
+      # MILE_OIDC_CLIENT_SECRET: change-me
+      # MILE_OIDC_NAME: Authentik
     volumes:
       - mile-data:/data
     # With a host path (e.g. a TrueNAS dataset) run as the user that owns it:

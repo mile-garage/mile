@@ -25,6 +25,13 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	SMTPTLS      string // starttls, tls, none
+
+	OIDCIssuer       string // OpenID Connect provider, e.g. https://auth.example.com/application/o/mile/
+	OIDCClientID     string
+	OIDCClientSecret string
+	OIDCName         string // provider name on the login button
+	OIDCAutoRegister bool   // create the users that log in for the first time
+	OIDCAdminGroup   string // members of this group are administrators
 }
 
 func Load() Config {
@@ -42,6 +49,13 @@ func Load() Config {
 		SMTPPassword: os.Getenv("MILE_SMTP_PASSWORD"),
 		SMTPFrom:     os.Getenv("MILE_SMTP_FROM"),
 		SMTPTLS:      strings.ToLower(env("MILE_SMTP_TLS", "starttls")),
+
+		OIDCIssuer:       os.Getenv("MILE_OIDC_ISSUER"),
+		OIDCClientID:     os.Getenv("MILE_OIDC_CLIENT_ID"),
+		OIDCClientSecret: os.Getenv("MILE_OIDC_CLIENT_SECRET"),
+		OIDCName:         env("MILE_OIDC_NAME", "SSO"),
+		OIDCAutoRegister: envBool("MILE_OIDC_AUTO_REGISTER", true),
+		OIDCAdminGroup:   os.Getenv("MILE_OIDC_ADMIN_GROUP"),
 	}
 }
 
@@ -58,6 +72,13 @@ func env(key, def string) string {
 
 func envInt(key string, def int) int {
 	if v, err := strconv.Atoi(os.Getenv(key)); err == nil && v > 0 {
+		return v
+	}
+	return def
+}
+
+func envBool(key string, def bool) bool {
+	if v, err := strconv.ParseBool(os.Getenv(key)); err == nil {
 		return v
 	}
 	return def

@@ -81,6 +81,14 @@ func serve(cfg config.Config) error {
 		Channels: []notify.Channel{&notify.Email{Config: smtp}, &notify.Ntfy{}}}
 	app := server.New(version, st, web.Dist(), cfg.MaxUploadMB)
 	app.SetNotifier(notifier, smtp.Configured())
+	if cfg.OIDCIssuer != "" {
+		if cfg.BaseURL == "" || cfg.OIDCClientID == "" {
+			return errors.New("MILE_OIDC_ISSUER also needs MILE_OIDC_CLIENT_ID and MILE_BASE_URL")
+		}
+		app.SetOIDC(server.OIDCConfig{Issuer: cfg.OIDCIssuer, ClientID: cfg.OIDCClientID, ClientSecret: cfg.OIDCClientSecret,
+			RedirectURL: cfg.BaseURL + "/auth/oidc/callback", Name: cfg.OIDCName,
+			AutoRegister: cfg.OIDCAutoRegister, AdminGroup: cfg.OIDCAdminGroup})
+	}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           app.Handler(),
@@ -106,6 +114,9 @@ func serve(cfg config.Config) error {
 	slog.Info("MILE started", "version", version, "addr", cfg.Addr, "data", cfg.DataDir)
 	if !smtp.Configured() {
 		slog.Info("email notifications off: set MILE_SMTP_HOST and MILE_SMTP_FROM to enable them")
+	}
+	if cfg.OIDCIssuer != "" {
+		slog.Info("login with OpenID Connect on", "issuer", cfg.OIDCIssuer, "redirect", cfg.BaseURL+"/auth/oidc/callback")
 	}
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err

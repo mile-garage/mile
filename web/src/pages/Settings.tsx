@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, type Locale, type NotificationInput, type NotificationSettings, type User } from '../api'
+import { api, ApiError, takeParam, type Locale, type NotificationInput, type NotificationSettings, type User } from '../api'
 import { PageHead, useLogout, useSession } from '../App'
 import { useI18n } from '../i18n'
 import { date } from '../format'
@@ -13,7 +13,7 @@ type Theme = 'light' | 'dark'
 
 export function Settings() {
   const { t } = useI18n()
-  const { user } = useSession()
+  const { user, sso } = useSession()
   const logout = useLogout()
   return (
     <div className="page">
@@ -26,6 +26,7 @@ export function Settings() {
       <Profile />
       <Notifications />
       <Calendar />
+      {sso && <SingleSignOn />}
       <Password />
       {user.is_admin && <Users />}
       <About />
@@ -159,8 +160,66 @@ function Calendar() {
   )
 }
 
+/** Link or unlink the account at the login provider (OpenID Connect). */
+function SingleSignOn() {
+  const { t } = useI18n()
+  const { user, setUser, sso } = useSession()
+  const { toast, fail, confirm } = useUI()
+  const [busy, setBusy] = useState(false)
+
+  // Linking comes back here with ?sso=linked or ?sso_error=<code>.
+  useEffect(() => {
+    if (takeParam('sso') === 'linked') {
+      toast(t('settings.ssoLinked'))
+      api.get<User>('/api/me').then(setUser).catch(fail)
+    }
+    const code = takeParam('sso_error')
+    if (code) fail(new ApiError(0, code, t('err.sso_failed')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const link = async () => {
+    setBusy(true)
+    try {
+      window.location.href = (await api.post<{ url: string }>('/api/me/sso')).url
+    } catch (e) {
+      fail(e)
+      setBusy(false)
+    }
+  }
+  const unlink = async () => {
+    if (!(await confirm({ title: t('settings.ssoUnlink'), message: t('settings.ssoUnlinkText'), danger: true }))) return
+    try {
+      setUser(await api.del<User>('/api/me/sso'))
+      toast(t('settings.ssoUnlinked'))
+    } catch (e) {
+      fail(e)
+    }
+  }
+
+  return (
+    <section className="card form-card">
+      <h2>{t('settings.sso', { name: sso })}</h2>
+      <p className="muted">{t(user.sso ? 'settings.ssoLinkedText' : 'settings.ssoUnlinkedText', { name: sso })}</p>
+      {user.sso && !user.has_password && <p className="muted small">{t('settings.ssoNoPassword')}</p>}
+      <div className="row-actions">
+        {user.sso ? (
+          <button className="btn btn-danger-ghost" onClick={unlink} disabled={!user.has_password}>
+            {t('settings.ssoUnlink')}
+          </button>
+        ) : (
+          <button className="btn btn-primary" onClick={link} disabled={busy}>
+            {busy ? <Spinner small /> : t('settings.ssoLink')}
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function Password() {
   const { t } = useI18n()
+  const { user, setUser } = useSession()
   const { toast, fail } = useUI()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
@@ -170,9 +229,10 @@ function Password() {
     setBusy(true)
     try {
       await api.post('/api/me/password', { current, new: next })
-      toast(t('settings.passwordChanged'))
+      toast(t(user.has_password ? 'settings.passwordChanged' : 'settings.passwordSet'))
       setCurrent('')
       setNext('')
+      if (!user.has_password) setUser({ ...user, has_password: true })
     } catch (err) {
       fail(err)
     }
@@ -180,11 +240,14 @@ function Password() {
   }
   return (
     <section className="card form-card">
-      <h2>{t('settings.password')}</h2>
+      <h2>{t(user.has_password ? 'settings.password' : 'settings.setPassword')}</h2>
+      {!user.has_password && <p className="muted">{t('settings.setPasswordText')}</p>}
       <form className="form-grid" onSubmit={submit}>
-        <Field label={t('settings.currentPassword')}>
-          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
-        </Field>
+        {user.has_password && (
+          <Field label={t('settings.currentPassword')}>
+            <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+          </Field>
+        )}
         <Field label={t('settings.newPassword')} hint={t('auth.passwordHint')}>
           <input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={8} required />
         </Field>
@@ -233,6 +296,7 @@ function Users() {
             <span>
               <strong>{u.display_name || u.username}</strong> <span className="muted">@{u.username}</span>
               {u.is_admin && <span className="badge">{t('settings.admin')}</span>}
+              {u.sso && <span className="badge">SSO</span>}
               <div className="muted small">{date(u.created_at, locale)}</div>
             </span>
             {u.id !== user.id && (
