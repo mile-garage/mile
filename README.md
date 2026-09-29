@@ -44,7 +44,7 @@ services:
 docker compose up -d
 ```
 
-Open `http://<server>:8080`: the first account you create is the administrator. Images are published for `linux/amd64` and `linux/arm64`.
+Open `http://<server>:8080`: the first account you create is the administrator. Images are published for `linux/amd64` and `linux/arm64`, on GitHub (`ghcr.io/mile-garage/mile`) and on Docker Hub (`gabrielemenghi/mile`): `latest` is the last release, `edge` follows the main branch.
 
 ### TrueNAS SCALE
 
