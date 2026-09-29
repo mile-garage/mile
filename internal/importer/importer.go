@@ -149,11 +149,13 @@ func category(name string) (string, bool) {
 	return "", false
 }
 
-// Checked in order: "oil" before "service", so "Oil service" is an oil change.
+// Checked in order: the automatic transmission before "oil", so "Olio cambio
+// automatico" is not an oil change; "oil" before "service", so "Oil service" is.
 var categoryWords = []struct {
 	category string
 	words    []string
 }{
+	{"transmission_oil", []string{"atf", "dsg", "automatico", "automatic", "transmission", "gearbox"}},
 	{"oil_change", []string{"oil", "olio"}},
 	{"tyres", []string{"tyre", "tyres", "tire", "tires", "gomme", "pneumatic"}},
 	{"inspection", []string{"mot", "inspection", "revisione", "collaudo"}},

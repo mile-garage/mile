@@ -27,14 +27,15 @@ const InsuranceGraceDays = 15
 type Kind string
 
 const (
-	Inspection   Kind = "inspection"
-	RoadTax      Kind = "road_tax"
-	Insurance    Kind = "insurance"
-	Service      Kind = "service"
-	OilChange    Kind = "oil_change"
-	TyreChange   Kind = "tyre_change"
-	TyreRotation Kind = "tyre_rotation"
-	Reminder     Kind = "reminder"
+	Inspection      Kind = "inspection"
+	RoadTax         Kind = "road_tax"
+	Insurance       Kind = "insurance"
+	Service         Kind = "service"
+	OilChange       Kind = "oil_change"
+	TransmissionOil Kind = "transmission_oil"
+	TyreChange      Kind = "tyre_change"
+	TyreRotation    Kind = "tyre_rotation"
+	Reminder        Kind = "reminder"
 )
 
 type Status string

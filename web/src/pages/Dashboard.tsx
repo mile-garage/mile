@@ -17,6 +17,7 @@ export const tabFor: Record<string, string> = {
   road_tax: 'deadlines',
   service: 'deadlines',
   oil_change: 'deadlines',
+  transmission_oil: 'deadlines',
   insurance: 'insurance',
   tyre_change: 'tyres',
   tyre_rotation: 'tyres',

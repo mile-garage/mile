@@ -14,7 +14,7 @@ import (
 // user's role on it (see RecordVehicle).
 
 var expenseCategories = map[string]bool{
-	"road_tax": true, "inspection": true, "service": true, "oil_change": true, "maintenance": true, "repair": true, "tyres": true,
+	"road_tax": true, "inspection": true, "service": true, "oil_change": true, "transmission_oil": true, "maintenance": true, "repair": true, "tyres": true,
 	"parking": true, "tolls": true, "fine": true, "wash": true, "accessories": true, "other": true,
 }
 

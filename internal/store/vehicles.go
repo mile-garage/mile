@@ -58,6 +58,8 @@ type VehicleInput struct {
 	ServiceIntervalMonths *int     `json:"service_interval_months"`
 	OilIntervalKm         *int64   `json:"oil_interval_km"`
 	OilIntervalMonths     *int     `json:"oil_interval_months"`
+	TransmissionOilKm     *int64   `json:"transmission_oil_interval_km"`
+	TransmissionOilMonths *int     `json:"transmission_oil_interval_months"`
 	TyreRotationKm        *int64   `json:"tyre_rotation_km"`
 	Notes                 string   `json:"notes"`
 }
@@ -131,6 +133,12 @@ func (in *VehicleInput) validate() error {
 	if in.OilIntervalMonths != nil && *in.OilIntervalMonths <= 0 {
 		in.OilIntervalMonths = nil
 	}
+	if in.TransmissionOilKm != nil && *in.TransmissionOilKm <= 0 {
+		in.TransmissionOilKm = nil
+	}
+	if in.TransmissionOilMonths != nil && *in.TransmissionOilMonths <= 0 {
+		in.TransmissionOilMonths = nil
+	}
 	return nil
 }
 
@@ -144,13 +152,13 @@ const currentKmExpr = `(SELECT MAX(km) FROM (
 
 const vehicleCols = `v.id, v.name, v.kind, v.make, v.model, v.plate, v.vin, v.fuel_type, v.registration_date, v.purchase_date,
 	v.initial_odometer, v.tank_capacity, v.inspection_rule, v.tax_month, v.tax_exempt_until, v.service_interval_km,
-	v.service_interval_months, v.oil_interval_km, v.oil_interval_months, v.tyre_rotation_km, v.notes, v.cover_id, v.archived_at IS NOT NULL, vu.role, ` + currentKmExpr + `, v.created_at, v.updated_at`
+	v.service_interval_months, v.oil_interval_km, v.oil_interval_months, v.transmission_oil_interval_km, v.transmission_oil_interval_months, v.tyre_rotation_km, v.notes, v.cover_id, v.archived_at IS NOT NULL, vu.role, ` + currentKmExpr + `, v.created_at, v.updated_at`
 
 func scanVehicle(row interface{ Scan(...any) error }) (*Vehicle, error) {
 	var v Vehicle
 	err := row.Scan(&v.ID, &v.Name, &v.Kind, &v.Make, &v.Model, &v.Plate, &v.VIN, &v.FuelType, &v.RegistrationDate, &v.PurchaseDate,
 		&v.InitialOdometer, &v.TankCapacity, &v.InspectionRule, &v.TaxMonth, &v.TaxExemptUntil, &v.ServiceIntervalKm,
-		&v.ServiceIntervalMonths, &v.OilIntervalKm, &v.OilIntervalMonths, &v.TyreRotationKm, &v.Notes, &v.CoverID, &v.Archived, &v.Role, &v.CurrentKm, &v.CreatedAt, &v.UpdatedAt)
+		&v.ServiceIntervalMonths, &v.OilIntervalKm, &v.OilIntervalMonths, &v.TransmissionOilKm, &v.TransmissionOilMonths, &v.TyreRotationKm, &v.Notes, &v.CoverID, &v.Archived, &v.Role, &v.CurrentKm, &v.CreatedAt, &v.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -203,10 +211,10 @@ func (s *Store) CreateVehicle(userID int64, in VehicleInput) (*Vehicle, error) {
 	t := now()
 	res, err := tx.Exec(`INSERT INTO vehicles (name, kind, make, model, plate, vin, fuel_type, registration_date, purchase_date,
 		initial_odometer, tank_capacity, inspection_rule, tax_month, tax_exempt_until, service_interval_km, service_interval_months,
-		oil_interval_km, oil_interval_months, tyre_rotation_km, notes, created_at, updated_at) VALUES (`+placeholders(22)+`)`,
+		oil_interval_km, oil_interval_months, transmission_oil_interval_km, transmission_oil_interval_months, tyre_rotation_km, notes, created_at, updated_at) VALUES (`+placeholders(24)+`)`,
 		in.Name, in.Kind, in.Make, in.Model, in.Plate, in.VIN, in.FuelType, in.RegistrationDate, in.PurchaseDate,
 		in.InitialOdometer, in.TankCapacity, in.InspectionRule, in.TaxMonth, in.TaxExemptUntil, in.ServiceIntervalKm,
-		in.ServiceIntervalMonths, in.OilIntervalKm, in.OilIntervalMonths, in.TyreRotationKm, in.Notes, t, t)
+		in.ServiceIntervalMonths, in.OilIntervalKm, in.OilIntervalMonths, in.TransmissionOilKm, in.TransmissionOilMonths, in.TyreRotationKm, in.Notes, t, t)
 	if err != nil {
 		return nil, err
 	}
@@ -226,11 +234,11 @@ func (s *Store) UpdateVehicle(userID, id int64, in VehicleInput) (*Vehicle, erro
 	}
 	res, err := s.DB.Exec(`UPDATE vehicles SET name = ?, kind = ?, make = ?, model = ?, plate = ?, vin = ?, fuel_type = ?,
 		registration_date = ?, purchase_date = ?, initial_odometer = ?, tank_capacity = ?, inspection_rule = ?, tax_month = ?,
-		tax_exempt_until = ?, service_interval_km = ?, service_interval_months = ?, oil_interval_km = ?, oil_interval_months = ?, tyre_rotation_km = ?, notes = ?, updated_at = ?
+		tax_exempt_until = ?, service_interval_km = ?, service_interval_months = ?, oil_interval_km = ?, oil_interval_months = ?, transmission_oil_interval_km = ?, transmission_oil_interval_months = ?, tyre_rotation_km = ?, notes = ?, updated_at = ?
 		WHERE id = ?`,
 		in.Name, in.Kind, in.Make, in.Model, in.Plate, in.VIN, in.FuelType, in.RegistrationDate, in.PurchaseDate,
 		in.InitialOdometer, in.TankCapacity, in.InspectionRule, in.TaxMonth, in.TaxExemptUntil, in.ServiceIntervalKm,
-		in.ServiceIntervalMonths, in.OilIntervalKm, in.OilIntervalMonths, in.TyreRotationKm, in.Notes, now(), id)
+		in.ServiceIntervalMonths, in.OilIntervalKm, in.OilIntervalMonths, in.TransmissionOilKm, in.TransmissionOilMonths, in.TyreRotationKm, in.Notes, now(), id)
 	if err != nil {
 		return nil, err
 	}

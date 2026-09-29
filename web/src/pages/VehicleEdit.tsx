@@ -33,6 +33,8 @@ const empty: VehicleInput = {
   service_interval_months: null,
   oil_interval_km: null,
   oil_interval_months: null,
+  transmission_oil_interval_km: null,
+  transmission_oil_interval_months: null,
   tyre_rotation_km: null,
   notes: '',
 }
@@ -57,6 +59,8 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     service_interval_months: numInput(vehicle?.service_interval_months),
     oil_interval_km: numInput(vehicle?.oil_interval_km),
     oil_interval_months: numInput(vehicle?.oil_interval_months),
+    transmission_oil_interval_km: numInput(vehicle?.transmission_oil_interval_km),
+    transmission_oil_interval_months: numInput(vehicle?.transmission_oil_interval_months),
     tyre_rotation_km: numInput(vehicle?.tyre_rotation_km),
   })
   const [busy, setBusy] = useState(false)
@@ -74,7 +78,10 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     }
     setBusy(true)
     try {
-      if (twoWheels(v.kind)) parsed.tyre_rotation_km = null
+      if (twoWheels(v.kind)) {
+        parsed.tyre_rotation_km = null
+        parsed.transmission_oil_interval_km = parsed.transmission_oil_interval_months = null
+      }
       const body = { ...v, ...parsed }
       const saved = vehicle ? await api.put<Vehicle>(`/api/vehicles/${vehicle.id}`, body) : await api.post<Vehicle>('/api/vehicles', body)
       toast(t('common.saved'))
@@ -207,6 +214,26 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
             <Field label={t('vehicle.oilMonths')}>
               <input inputMode="numeric" value={nums.oil_interval_months} onChange={(e) => setNum('oil_interval_months', e.target.value)} placeholder="12" />
             </Field>
+            {!twoWheels(v.kind) && (
+              <>
+                <Field label={t('vehicle.transmissionOilKm')} hint={t('vehicle.transmissionOilHint')}>
+                  <input
+                    inputMode="numeric"
+                    value={nums.transmission_oil_interval_km}
+                    onChange={(e) => setNum('transmission_oil_interval_km', e.target.value)}
+                    placeholder="60000"
+                  />
+                </Field>
+                <Field label={t('vehicle.transmissionOilMonths')}>
+                  <input
+                    inputMode="numeric"
+                    value={nums.transmission_oil_interval_months}
+                    onChange={(e) => setNum('transmission_oil_interval_months', e.target.value)}
+                    placeholder="48"
+                  />
+                </Field>
+              </>
+            )}
             {!twoWheels(v.kind) && (
               <Field label={t('vehicle.tyreRotationKm')} hint={t('vehicle.tyreRotationHint')} wide>
                 <input inputMode="numeric" value={nums.tyre_rotation_km} onChange={(e) => setNum('tyre_rotation_km', e.target.value)} placeholder="10000" />

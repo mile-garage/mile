@@ -209,7 +209,7 @@ func TestNumbers(t *testing.T) {
 
 func TestCategory(t *testing.T) {
 	for name, want := range map[string]string{
-		"Cambio olio": "oil_change", "Revisione": "inspection", "MOT": "inspection", "Motore": "",
+		"Cambio olio": "oil_change", "Olio cambio automatico": "transmission_oil", "ATF": "transmission_oil", "Revisione": "inspection", "MOT": "inspection", "Motore": "",
 		"Gomme invernali": "tyres", "Pedaggi": "tolls", "Assicurazione": "",
 	} {
 		if got, _ := category(name); got != want {

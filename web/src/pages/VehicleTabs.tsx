@@ -50,6 +50,7 @@ export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabPr
     inspection: { category: 'inspection', odometer: km },
     service: { category: 'service', odometer: km },
     oil_change: { category: 'oil_change', odometer: km },
+    transmission_oil: { category: 'transmission_oil', odometer: km },
     // a payment made for the deadline covers the 12 months after the expired one
     road_tax: { category: 'road_tax', valid_until: roadTax?.due ? addMonths(roadTax.due, 11).slice(0, 7) : null },
   }
@@ -100,6 +101,12 @@ export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabPr
             <Icon name="check" size={16} />
             {t('quick.oilChange')}
           </button>
+          {(vehicle.transmission_oil_interval_km || vehicle.transmission_oil_interval_months) && (
+            <button className="btn" onClick={() => setExpense(presets.transmission_oil)}>
+              <Icon name="check" size={16} />
+              {t('quick.transmissionOil')}
+            </button>
+          )}
           <button className="btn" onClick={() => setReminder('new')}>
             <Icon name="bell" size={16} />
             {t('deadline.addReminder')}

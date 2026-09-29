@@ -294,6 +294,30 @@ ALTER TABLE users ADD COLUMN oidc_issuer TEXT;
 ALTER TABLE users ADD COLUMN oidc_subject TEXT;
 CREATE UNIQUE INDEX users_oidc ON users(oidc_issuer, oidc_subject) WHERE oidc_subject IS NOT NULL;
 `,
+	`
+-- Automatic transmission oil: its own optional interval and expense category.
+ALTER TABLE vehicles ADD COLUMN transmission_oil_interval_km INTEGER;
+ALTER TABLE vehicles ADD COLUMN transmission_oil_interval_months INTEGER;
+
+CREATE TABLE expenses_new (
+	id            INTEGER PRIMARY KEY,
+	vehicle_id    INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+	date          TEXT NOT NULL,
+	category      TEXT NOT NULL CHECK (category IN ('road_tax','inspection','service','oil_change','transmission_oil','maintenance','repair','tyres','parking','tolls','fine','wash','accessories','other')),
+	description   TEXT NOT NULL DEFAULT '',
+	amount_cents  INTEGER NOT NULL,
+	odometer      INTEGER,
+	vendor        TEXT NOT NULL DEFAULT '',
+	valid_until   TEXT,
+	notes         TEXT NOT NULL DEFAULT '',
+	created_at    TEXT NOT NULL,
+	updated_at    TEXT NOT NULL
+);
+INSERT INTO expenses_new SELECT * FROM expenses;
+DROP TABLE expenses;
+ALTER TABLE expenses_new RENAME TO expenses;
+CREATE INDEX expenses_vehicle ON expenses(vehicle_id, date);
+`,
 }
 
 // migrate applies the pending migrations on a single connection with

@@ -355,3 +355,47 @@ func TestTyres(t *testing.T) {
 		t.Errorf("after delete: %+v", ty)
 	}
 }
+
+// The automatic transmission oil has its own interval, reset only by its own expenses.
+func TestTransmissionOil(t *testing.T) {
+	ts := newServer(t)
+	c := newClient(t, ts)
+	c.must("POST", "/api/setup", map[string]string{"username": "gabri", "password": "password123"}, nil)
+	var v store.Vehicle
+	c.must("POST", "/api/vehicles", map[string]any{"name": "Golf DSG", "kind": "car", "fuel_type": "diesel",
+		"registration_date": "2020-03-01", "initial_odometer": 0, "oil_interval_km": 15000,
+		"transmission_oil_interval_km": 60000, "transmission_oil_interval_months": 48}, &v)
+	if v.TransmissionOilKm == nil || *v.TransmissionOilKm != 60000 || *v.TransmissionOilMonths != 48 {
+		t.Fatalf("vehicle: %+v", v)
+	}
+	vp := "/api/vehicles/" + itoa(v.ID)
+	find := func() map[string]any {
+		var ds []map[string]any
+		c.must("GET", vp+"/deadlines", nil, &ds)
+		for _, d := range ds {
+			if d["kind"] == "transmission_oil" {
+				return d
+			}
+		}
+		return nil
+	}
+	if d := find(); d == nil || d["due_km"] != float64(60000) || d["due"] != "2024-03-01" {
+		t.Fatalf("from registration: %v", d)
+	}
+	// An oil change or a service does not change it...
+	c.must("POST", vp+"/expenses", map[string]any{"date": "2025-01-10", "category": "service", "amount_cents": 20000, "odometer": 50000}, nil)
+	if d := find(); d["due_km"] != float64(60000) {
+		t.Errorf("after a service: %v", d)
+	}
+	// ...its own expense does.
+	c.must("POST", vp+"/expenses", map[string]any{"date": "2025-02-10", "category": "transmission_oil", "amount_cents": 30000, "odometer": 52000}, nil)
+	if d := find(); d["due_km"] != float64(112000) || d["due"] != "2029-02-10" {
+		t.Errorf("after the transmission oil: %v", d)
+	}
+	// Without an interval there is no deadline.
+	v.TransmissionOilKm, v.TransmissionOilMonths = nil, nil
+	c.must("PUT", vp, v.VehicleInput, nil)
+	if d := find(); d != nil {
+		t.Errorf("without interval: %v", d)
+	}
+}

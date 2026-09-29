@@ -58,6 +58,7 @@ func Write(w io.Writer, st *store.Store, userID int64, vehicles []store.Vehicle,
 	vt := &table{name: "vehicles", cols: []string{"id", "name", "kind", "make", "model", "plate", "vin", "fuel_type",
 		"registration_date", "purchase_date", "initial_odometer", "tank_capacity", "inspection_rule", "tax_month",
 		"tax_exempt_until", "service_interval_km", "service_interval_months", "oil_interval_km", "oil_interval_months",
+		"transmission_oil_interval_km", "transmission_oil_interval_months",
 		"tyre_rotation_km", "archived", "notes"}}
 	rt := &table{name: "refuels", cols: []string{"vehicle_id", "vehicle", "date", "odometer", "quantity", "total", "unit_price",
 		"full_tank", "missed_previous", "station", "notes"}}
@@ -94,7 +95,7 @@ func Write(w io.Writer, st *store.Store, userID int64, vehicles []store.Vehicle,
 		names[v.ID] = v.Name
 		vt.add(v.ID, v.Name, enum(v.Kind), v.Make, v.Model, v.Plate, v.VIN, enum(v.FuelType), v.RegistrationDate, v.PurchaseDate,
 			v.InitialOdometer, v.TankCapacity, enum(v.InspectionRule), v.TaxMonth, v.TaxExemptUntil, v.ServiceIntervalKm,
-			v.ServiceIntervalMonths, v.OilIntervalKm, v.OilIntervalMonths, v.TyreRotationKm, v.Archived, v.Notes)
+			v.ServiceIntervalMonths, v.OilIntervalKm, v.OilIntervalMonths, v.TransmissionOilKm, v.TransmissionOilMonths, v.TyreRotationKm, v.Archived, v.Notes)
 
 		refuels, err := st.ListRefuels(v.ID)
 		if err != nil {
