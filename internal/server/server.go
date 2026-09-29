@@ -68,6 +68,7 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /api/users/{id}/password", s.admin(s.resetPassword))
 
 	api.HandleFunc("GET /api/deadlines", s.listDeadlines)
+	api.HandleFunc("GET /api/export", s.exportAll)
 
 	api.HandleFunc("GET /api/vehicles", s.listVehicles)
 	api.HandleFunc("POST /api/vehicles", s.createVehicle)
@@ -81,6 +82,8 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("GET /api/vehicles/{id}/members", s.vehicle(store.RoleViewer, s.listMembers))
 	api.HandleFunc("PUT /api/vehicles/{id}/members", s.vehicle(store.RoleOwner, s.setMember))
 	api.HandleFunc("DELETE /api/vehicles/{id}/members/{user}", s.vehicle(store.RoleOwner, s.removeMember))
+	api.HandleFunc("GET /api/vehicles/{id}/export", s.vehicle(store.RoleViewer, s.exportVehicle))
+	api.HandleFunc("POST /api/vehicles/{id}/import", s.vehicle(store.RoleEditor, s.importRecords))
 
 	api.HandleFunc("GET /api/vehicles/{id}/expenses", s.vehicle(store.RoleViewer, s.listExpenses))
 	api.HandleFunc("POST /api/vehicles/{id}/expenses", s.vehicle(store.RoleEditor, s.createExpense))

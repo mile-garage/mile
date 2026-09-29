@@ -20,6 +20,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 - **Calendar feed** (iCal): subscribe from your phone and get deadlines with alerts 7 days and 1 day before.
 - **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
 - **Multi-user**: share a vehicle with your family as owner, editor or read-only. Single sign-on with Authentik, Authelia, Keycloak or any OpenID Connect provider.
+- **Your data, in and out**: import from [Fuelio](https://www.fuel.io) and [LubeLogger](https://lubelogger.com); export everything as CSV files ready for Excel, with the attachments if you want.
 - **Mobile first**: installable as an app from the browser (PWA). Italian and English, light and dark theme.
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
@@ -108,6 +109,15 @@ At the first login MILE creates the user with the Authentik username, and on a n
 docker compose exec mile /mile reset-password <username> <new-password>
 ```
 
+### Import from Fuelio and LubeLogger, export to CSV
+
+Open a vehicle and choose **Import**. MILE shows what it will add before saving anything, and skips the records it already has, so importing the same file twice is harmless.
+
+- **Fuelio**: make a CSV backup and upload the `vehicle-N-sync.csv` of that vehicle (or the `.zip` from Google Drive). Refuels and costs are imported; miles and gallons are converted.
+- **LubeLogger**: in each tab of the vehicle choose *Export to CSV*, then upload one file at a time saying what it contains (gas, service, repairs, upgrades, taxes, odometer) and its units. Dates and amounts are read whatever the language of the server.
+
+**Export** a vehicle, or all of them from **Settings › Your data**: a ZIP with a CSV per kind of data, either for spreadsheets (`;`, decimal comma, headers in your language: opens with a double click in Excel set to Italian) or standard CSV, optionally with the attachments.
+
 **Backups**: every day `/data/backups/mile-YYYY-MM-DD.db` is created. To restore, stop the container, replace `/data/mile.db` with a backup, and start it again. Attachments live in `/data/files`.
 
 ## Development
@@ -136,13 +146,14 @@ internal/fuel/       consumption, full-to-full method
 internal/store/      data access and validation
 internal/server/     JSON API, attachments, calendar feed, OpenID Connect login
 internal/ical/       iCalendar rendering
+internal/importer/   Fuelio and LubeLogger files
+internal/export/     CSV export (ZIP archive)
 web/                 React frontend
 ```
 
 ## Roadmap
 
 - More notification channels: Apprise, web push
-- Import from Fuelio and LubeLogger, CSV export
 - Receipt scanning
 
 ## License

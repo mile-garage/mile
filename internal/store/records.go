@@ -146,15 +146,23 @@ func (s *Store) CreateExpense(vehicleID int64, in ExpenseInput) (*Expense, error
 	if err := in.validate(); err != nil {
 		return nil, err
 	}
-	t := now()
-	res, err := s.DB.Exec(`INSERT INTO expenses (vehicle_id, date, category, description, amount_cents, odometer, vendor,
-		valid_until, notes, created_at, updated_at) VALUES (`+placeholders(11)+`)`,
-		vehicleID, in.Date, in.Category, in.Description, in.AmountCents, in.Odometer, in.Vendor, in.ValidUntil, in.Notes, t, t)
+	id, err := insertExpense(s.DB, vehicleID, in)
 	if err != nil {
 		return nil, err
 	}
-	id, _ := res.LastInsertId()
 	return s.GetExpense(id)
+}
+
+// insertExpense stores a validated expense.
+func insertExpense(q execer, vehicleID int64, in ExpenseInput) (int64, error) {
+	t := now()
+	res, err := q.Exec(`INSERT INTO expenses (vehicle_id, date, category, description, amount_cents, odometer, vendor,
+		valid_until, notes, created_at, updated_at) VALUES (`+placeholders(11)+`)`,
+		vehicleID, in.Date, in.Category, in.Description, in.AmountCents, in.Odometer, in.Vendor, in.ValidUntil, in.Notes, t, t)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 func (s *Store) UpdateExpense(id int64, in ExpenseInput) (*Expense, error) {
@@ -289,16 +297,24 @@ func (s *Store) CreateRefuel(vehicleID int64, in RefuelInput) (*Refuel, error) {
 	if err := in.validate(); err != nil {
 		return nil, err
 	}
+	id, err := insertRefuel(s.DB, vehicleID, in)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetRefuel(id)
+}
+
+// insertRefuel stores a validated refuel.
+func insertRefuel(q execer, vehicleID int64, in RefuelInput) (int64, error) {
 	t := now()
-	res, err := s.DB.Exec(`INSERT INTO refuels (vehicle_id, date, odometer, quantity, total_cents, full_tank, missed_previous,
+	res, err := q.Exec(`INSERT INTO refuels (vehicle_id, date, odometer, quantity, total_cents, full_tank, missed_previous,
 		station, notes, created_at, updated_at) VALUES (`+placeholders(11)+`)`,
 		vehicleID, in.Date, in.Odometer, in.Quantity, in.TotalCents, boolInt(in.FullTank), boolInt(in.MissedPrevious),
 		in.Station, in.Notes, t, t)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	id, _ := res.LastInsertId()
-	return s.GetRefuel(id)
+	return res.LastInsertId()
 }
 
 func (s *Store) UpdateRefuel(id int64, in RefuelInput) (*Refuel, error) {
@@ -355,13 +371,20 @@ func (s *Store) ListOdometer(vehicleID int64) ([]OdometerReading, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) CreateOdometer(vehicleID int64, in OdometerInput) (*OdometerReading, error) {
+func (in *OdometerInput) validate() error {
 	in.Notes = Clean(in.Notes)
 	if err := checkDate(in.Date, "date"); err != nil {
-		return nil, err
+		return err
 	}
 	if in.Km < 0 {
-		return nil, invalid("km_invalid", "Invalid odometer value")
+		return invalid("km_invalid", "Invalid odometer value")
+	}
+	return nil
+}
+
+func (s *Store) CreateOdometer(vehicleID int64, in OdometerInput) (*OdometerReading, error) {
+	if err := in.validate(); err != nil {
+		return nil, err
 	}
 	t := now()
 	res, err := s.DB.Exec(`INSERT INTO odometer_readings (vehicle_id, date, km, notes, created_at) VALUES (?, ?, ?, ?, ?)`,

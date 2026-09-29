@@ -8,6 +8,7 @@ import { useI18n } from '../i18n'
 import { date } from '../format'
 import { Icon } from '../components/Icon'
 import { Field, Modal, Spinner, useLoad, useUI } from '../components/ui'
+import { ExportDialog } from '../components/Transfer'
 
 type Theme = 'light' | 'dark'
 
@@ -28,6 +29,7 @@ export function Settings() {
       <Calendar />
       {sso && <SingleSignOn />}
       <Password />
+      <Data />
       {user.is_admin && <Users />}
       <About />
     </div>
@@ -156,6 +158,25 @@ function Calendar() {
           {t('settings.calendarReset')}
         </button>
       </div>
+    </section>
+  )
+}
+
+/** Export of all the data of the user's vehicles. */
+function Data() {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  return (
+    <section className="card form-card">
+      <h2>{t('settings.data')}</h2>
+      <p className="muted">{t('settings.dataText')}</p>
+      <div className="row-actions">
+        <button className="btn" onClick={() => setOpen(true)}>
+          <Icon name="upload" size={16} />
+          {t('export.titleAll')}
+        </button>
+      </div>
+      {open && <ExportDialog url="/api/export" title={t('export.titleAll')} onClose={() => setOpen(false)} />}
     </section>
   )
 }

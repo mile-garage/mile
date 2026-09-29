@@ -1304,3 +1304,27 @@ input[type='checkbox'] {
 .chip:has(input:focus-visible) {
   outline: 2px solid color-mix(in oklab, var(--accent) 35%, transparent);
 }
+
+/* ---- import ---- */
+
+.import-preview {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.import-preview ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.import-preview p {
+  margin: 6px 0 0;
+}
+.import-invalid {
+  margin-top: 8px;
+  color: var(--warn);
+}
+.import-invalid ul {
+  max-height: 140px;
+  overflow-y: auto;
+}

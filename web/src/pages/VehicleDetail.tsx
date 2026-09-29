@@ -9,6 +9,7 @@ import { useI18n } from '../i18n'
 import { num } from '../format'
 import { Icon } from '../components/Icon'
 import { OdometerForm } from '../components/Forms'
+import { ExportDialog, ImportDialog } from '../components/Transfer'
 import { Loading, useLoad } from '../components/ui'
 import { VehicleCover } from './Vehicles'
 import { DeadlinesTab, ExpensesTab, FuelTab, InsuranceTab, PhotosTab, SummaryTab } from './VehicleTabs'
@@ -23,6 +24,7 @@ export function VehicleDetail() {
   const [params, setParams] = useSearchParams()
   const vehicle = useLoad<Vehicle>(`/api/vehicles/${id}`)
   const [kmForm, setKmForm] = useState(false)
+  const [dialog, setDialog] = useState<'export' | 'import' | null>(null)
   // bumped after every change, so that the tabs reload their data
   const [version, setVersion] = useState(0)
   const tab: Tab = tabs.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'deadlines'
@@ -45,6 +47,16 @@ export function VehicleDetail() {
   return (
     <div className="page">
       <PageHead title={v.name} back={back}>
+        <button className="btn" onClick={() => setDialog('export')} aria-label={t('transfer.export')}>
+          <Icon name="upload" size={16} />
+          <span className="hide-sm">{t('transfer.export')}</span>
+        </button>
+        {canEdit && (
+          <button className="btn" onClick={() => setDialog('import')} aria-label={t('transfer.import')}>
+            <Icon name="download" size={16} />
+            <span className="hide-sm">{t('transfer.import')}</span>
+          </button>
+        )}
         {canEdit && (
           <Link className="btn" to={`/vehicles/${v.id}/edit`}>
             <Icon name="edit" size={16} />
@@ -89,6 +101,17 @@ export function VehicleDetail() {
       {tab === 'photos' && <PhotosTab {...props} />}
       {tab === 'summary' && <SummaryTab {...props} />}
 
+      {dialog === 'export' && <ExportDialog url={`/api/vehicles/${v.id}/export`} title={t('export.title')} onClose={() => setDialog(null)} />}
+      {dialog === 'import' && (
+        <ImportDialog
+          vehicle={v}
+          onClose={() => setDialog(null)}
+          onDone={() => {
+            setDialog(null)
+            changed()
+          }}
+        />
+      )}
       {kmForm && (
         <OdometerForm
           vehicle={v}
