@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mile-garage/mile/internal/notify"
 	"github.com/mile-garage/mile/internal/store"
 )
 
@@ -24,9 +25,16 @@ const cookieName = "mile_session"
 
 type Server struct {
 	version   string
+	notifier  *notify.Runner
+	smtpReady bool
 	store     *store.Store
 	static    fs.FS
 	maxUpload int64
+}
+
+// SetNotifier enables the notification settings and the test button.
+func (s *Server) SetNotifier(r *notify.Runner, smtpReady bool) {
+	s.notifier, s.smtpReady = r, smtpReady
 }
 
 // Types missing from minimal images (distroless has no /etc/mime.types).
@@ -46,6 +54,9 @@ func (s *Server) Handler() http.Handler {
 	api.HandleFunc("POST /api/me/password", s.changePassword)
 	api.HandleFunc("GET /api/me/calendar", s.calendarInfo)
 	api.HandleFunc("POST /api/me/calendar", s.regenerateCalendar)
+	api.HandleFunc("GET /api/me/notifications", s.getNotifications)
+	api.HandleFunc("PUT /api/me/notifications", s.saveNotifications)
+	api.HandleFunc("POST /api/me/notifications/test", s.testNotifications)
 	api.HandleFunc("POST /api/logout", s.logout)
 
 	api.HandleFunc("GET /api/users", s.admin(s.listUsers))

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -15,6 +16,15 @@ type Config struct {
 	DataDir     string // database, backups and attachments
 	BackupKeep  int    // number of daily database backups to keep
 	MaxUploadMB int    // maximum size of a single attachment
+	BaseURL     string // public address of MILE, for links in notifications
+	NotifyHour  int    // local hour from which the daily notifications are sent
+
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPTLS      string // starttls, tls, none
 }
 
 func Load() Config {
@@ -23,6 +33,15 @@ func Load() Config {
 		DataDir:     env("MILE_DATA_DIR", "data"),
 		BackupKeep:  envInt("MILE_BACKUP_KEEP", 14),
 		MaxUploadMB: envInt("MILE_MAX_UPLOAD_MB", 25),
+		BaseURL:     strings.TrimRight(os.Getenv("MILE_BASE_URL"), "/"),
+		NotifyHour:  envHour("MILE_NOTIFY_HOUR", 9),
+
+		SMTPHost:     os.Getenv("MILE_SMTP_HOST"),
+		SMTPPort:     envInt("MILE_SMTP_PORT", 0),
+		SMTPUsername: os.Getenv("MILE_SMTP_USERNAME"),
+		SMTPPassword: os.Getenv("MILE_SMTP_PASSWORD"),
+		SMTPFrom:     os.Getenv("MILE_SMTP_FROM"),
+		SMTPTLS:      strings.ToLower(env("MILE_SMTP_TLS", "starttls")),
 	}
 }
 
@@ -39,6 +58,13 @@ func env(key, def string) string {
 
 func envInt(key string, def int) int {
 	if v, err := strconv.Atoi(os.Getenv(key)); err == nil && v > 0 {
+		return v
+	}
+	return def
+}
+
+func envHour(key string, def int) int {
+	if v, err := strconv.Atoi(os.Getenv(key)); err == nil && v >= 0 && v <= 23 {
 		return v
 	}
 	return def

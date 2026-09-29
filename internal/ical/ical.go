@@ -14,23 +14,6 @@ import (
 	"github.com/mile-garage/mile/internal/deadlines"
 )
 
-var titles = map[string]map[deadlines.Kind]string{
-	"it": {
-		deadlines.Inspection: "Revisione",
-		deadlines.RoadTax:    "Bollo",
-		deadlines.Insurance:  "Scadenza assicurazione",
-		deadlines.Service:    "Tagliando",
-		deadlines.OilChange:  "Cambio olio",
-	},
-	"en": {
-		deadlines.Inspection: "Inspection",
-		deadlines.RoadTax:    "Road tax",
-		deadlines.Insurance:  "Insurance expiry",
-		deadlines.Service:    "Service",
-		deadlines.OilChange:  "Oil change",
-	},
-}
-
 var texts = map[string]map[string]string{
 	"it": {"calendar": "Scadenze veicoli", "estimated": "Data stimata dai km percorsi", "km": "Entro %d km", "grace": "Tolleranza fino al %s", "suspended": "Polizza sospesa dal %s"},
 	"en": {"calendar": "Vehicle deadlines", "estimated": "Date estimated from the distance driven", "km": "By %d km", "grace": "Grace period until %s", "suspended": "Policy suspended since %s"},
@@ -38,9 +21,7 @@ var texts = map[string]map[string]string{
 
 // Feed builds the calendar. Deadlines known only by km are left out.
 func Feed(ds []deadlines.Deadline, locale string, now time.Time) []byte {
-	if locale != "en" {
-		locale = "it" // Italian rules: Italian is the default
-	}
+	locale = deadlines.Locale(locale)
 	tx := texts[locale]
 	var b bytes.Buffer
 	line := func(s string) { b.WriteString(fold(s)) }
@@ -61,10 +42,7 @@ func Feed(ds []deadlines.Deadline, locale string, now time.Time) []byte {
 		if err != nil {
 			continue
 		}
-		title := d.Title
-		if title == "" {
-			title = titles[locale][d.Kind]
-		}
+		title := d.TitleIn(locale)
 		if d.VehicleName != "" {
 			title += " – " + d.VehicleName
 		}

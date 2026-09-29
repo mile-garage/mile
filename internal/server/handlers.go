@@ -555,3 +555,57 @@ func done(w http.ResponseWriter, err error) {
 	}
 	writeJSON(w, map[string]bool{"ok": true})
 }
+
+// ---- notifications ----
+
+type notificationsResponse struct {
+	*store.NotificationSettings
+	SMTPConfigured    bool `json:"smtp_configured"`
+	BaseURLConfigured bool `json:"base_url_configured"`
+}
+
+func (s *Server) notificationsResponse(st *store.NotificationSettings) notificationsResponse {
+	return notificationsResponse{st, s.smtpReady, s.notifier != nil && s.notifier.BaseURL != ""}
+}
+
+func (s *Server) getNotifications(w http.ResponseWriter, r *http.Request) {
+	st, err := s.store.GetNotificationSettings(userOf(r).ID)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, s.notificationsResponse(st))
+}
+
+func (s *Server) saveNotifications(w http.ResponseWriter, r *http.Request) {
+	var in store.NotificationInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	st, err := s.store.SaveNotificationSettings(userOf(r).ID, in)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	writeJSON(w, s.notificationsResponse(st))
+}
+
+// testNotifications sends a test message on the channels saved and enabled.
+func (s *Server) testNotifications(w http.ResponseWriter, r *http.Request) {
+	u := userOf(r)
+	st, err := s.store.GetNotificationSettings(u.ID)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if s.notifier == nil {
+		writeError(w, http.StatusServiceUnavailable, "notifications_off", "Notifications are not available")
+		return
+	}
+	res := s.notifier.Test(r.Context(), *u, *st)
+	if len(res) == 0 {
+		writeError(w, http.StatusBadRequest, "no_channels", "Enable at least one channel and save first")
+		return
+	}
+	writeJSON(w, res)
+}

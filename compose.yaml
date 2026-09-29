@@ -8,6 +8,12 @@ services:
       - "8080:8080"
     environment:
       TZ: Europe/Rome
+      # MILE_BASE_URL: https://mile.example.com   # links in notifications
+      # Email notifications (ntfy needs no server settings):
+      # MILE_SMTP_HOST: smtp.example.com
+      # MILE_SMTP_USERNAME: mile@example.com
+      # MILE_SMTP_PASSWORD: change-me
+      # MILE_SMTP_FROM: MILE <mile@example.com>
     volumes:
       - mile-data:/data
     # With a host path (e.g. a TrueNAS dataset) run as the user that owns it:

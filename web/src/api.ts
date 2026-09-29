@@ -284,3 +284,26 @@ export interface Stats {
   km: number | null
   cents_per_km: number | null
 }
+
+export interface NotificationSettings {
+  email: string
+  email_enabled: boolean
+  ntfy_url: string
+  ntfy_topic: string
+  has_ntfy_token: boolean
+  ntfy_enabled: boolean
+  days: number[]
+  smtp_configured: boolean
+  base_url_configured: boolean
+}
+
+export interface NotificationInput {
+  email: string
+  email_enabled: boolean
+  ntfy_url: string
+  ntfy_topic: string
+  /** undefined keeps the saved token, '' removes it */
+  ntfy_token?: string
+  ntfy_enabled: boolean
+  days: number[]
+}

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { api, type Locale, type User } from '../api'
+import { api, type Locale, type NotificationInput, type NotificationSettings, type User } from '../api'
 import { PageHead, useLogout, useSession } from '../App'
 import { useI18n } from '../i18n'
 import { date } from '../format'
@@ -24,6 +24,7 @@ export function Settings() {
         </button>
       </PageHead>
       <Profile />
+      <Notifications />
       <Calendar />
       <Password />
       {user.is_admin && <Users />}
@@ -367,6 +368,163 @@ function About() {
           {t('settings.source')}
         </a>
       </div>
+    </section>
+  )
+}
+
+const DAY_CHOICES = [60, 30, 14, 7, 3, 1, 0]
+
+function randomTopic(): string {
+  const b = new Uint8Array(8)
+  crypto.getRandomValues(b)
+  return 'mile-' + Array.from(b, (x) => x.toString(36).padStart(2, '0')).join('').slice(0, 14)
+}
+
+function Notifications() {
+  const { t } = useI18n()
+  const { user } = useSession()
+  const { toast, fail } = useUI()
+  const [st, setSt] = useState<NotificationSettings | null>(null)
+  const [token, setToken] = useState<string | undefined>(undefined)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api.get<NotificationSettings>('/api/me/notifications').then(setSt).catch(fail)
+  }, [fail])
+  if (!st) return null
+
+  const set = <K extends keyof NotificationSettings>(k: K, v: NotificationSettings[K]) => setSt({ ...st, [k]: v })
+  const toggleDay = (n: number) => set('days', st.days.includes(n) ? st.days.filter((d) => d !== n) : [...st.days, n])
+
+  const save = async (): Promise<boolean> => {
+    const body: NotificationInput = {
+      email: st.email,
+      email_enabled: st.email_enabled,
+      ntfy_url: st.ntfy_url,
+      ntfy_topic: st.ntfy_topic,
+      ntfy_enabled: st.ntfy_enabled,
+      days: st.days,
+    }
+    if (token !== undefined) body.ntfy_token = token
+    try {
+      setSt(await api.put<NotificationSettings>('/api/me/notifications', body))
+      setToken(undefined)
+      return true
+    } catch (e) {
+      fail(e)
+      return false
+    }
+  }
+
+  const onSave = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    if (await save()) toast(t('common.saved'))
+    setBusy(false)
+  }
+
+  const test = async () => {
+    setBusy(true)
+    if (await save()) {
+      try {
+        const res = await api.post<Record<string, string>>('/api/me/notifications/test')
+        const ok = Object.keys(res).filter((k) => res[k] === 'ok')
+        if (ok.length) toast(t('notify.testOk', { channels: ok.join(', ') }))
+        for (const [channel, error] of Object.entries(res)) if (error !== 'ok') toast(t('notify.testFail', { channel, error }), 'error')
+      } catch (e) {
+        fail(e)
+      }
+    }
+    setBusy(false)
+  }
+
+  const dayLabel = (n: number) => (n === 0 ? t('notify.day0') : n === 1 ? t('notify.day1') : t('notify.dayN', { n }))
+
+  return (
+    <section className="card form-card">
+      <h2>
+        <Icon name="bell" size={18} /> {t('notify.title')}
+      </h2>
+      <p className="muted">{t('notify.text')}</p>
+      <form onSubmit={onSave}>
+        <div className="notify-channel">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={st.email_enabled}
+              disabled={!st.smtp_configured && !st.email_enabled}
+              onChange={(e) => set('email_enabled', e.target.checked)}
+            />
+            <strong>{t('notify.email')}</strong>
+          </label>
+          {!st.smtp_configured && <p className="muted small">{t('notify.smtpOff')}</p>}
+          {(st.email_enabled || st.smtp_configured) && (
+            <Field label={t('notify.emailAddress')}>
+              <input type="email" value={st.email} onChange={(e) => set('email', e.target.value)} autoComplete="email" />
+            </Field>
+          )}
+        </div>
+
+        <div className="notify-channel">
+          <label className="check">
+            <input type="checkbox" checked={st.ntfy_enabled} onChange={(e) => set('ntfy_enabled', e.target.checked)} />
+            <strong>{t('notify.ntfy')}</strong>
+          </label>
+          {st.ntfy_enabled && (
+            <div className="form-grid">
+              <Field label={t('notify.ntfyServer')}>
+                <input type="url" value={st.ntfy_url} onChange={(e) => set('ntfy_url', e.target.value)} placeholder="https://ntfy.sh" />
+              </Field>
+              <Field label={t('notify.ntfyTopic')}>
+                <div className="inline-form">
+                  <input value={st.ntfy_topic} onChange={(e) => set('ntfy_topic', e.target.value)} autoCapitalize="none" />
+                  <button type="button" className="btn" onClick={() => set('ntfy_topic', randomTopic())}>
+                    {t('notify.ntfyGenerate')}
+                  </button>
+                </div>
+              </Field>
+              <Field label={`${t('notify.ntfyToken')} (${t('common.optional')})`} wide>
+                <div className="inline-form">
+                  <input
+                    type="password"
+                    value={token ?? ''}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder={st.has_ntfy_token && token === undefined ? t('notify.ntfyTokenSaved') : 'tk_…'}
+                    autoComplete="off"
+                  />
+                  {st.has_ntfy_token && token === undefined && (
+                    <button type="button" className="btn btn-danger-ghost" onClick={() => setToken('')}>
+                      {t('notify.ntfyTokenRemove')}
+                    </button>
+                  )}
+                </div>
+              </Field>
+              <p className="muted small field-wide">{t('notify.ntfyHint')}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="field-label">{t('notify.days')}</div>
+        <div className="chips">
+          {DAY_CHOICES.map((n) => (
+            <label key={n} className={`chip${st.days.includes(n) ? ' on' : ''}`}>
+              <input type="checkbox" checked={st.days.includes(n)} onChange={() => toggleDay(n)} />
+              {dayLabel(n)}
+            </label>
+          ))}
+        </div>
+        <p className="muted small">{t('notify.daysHint')}</p>
+        {!st.base_url_configured && user.is_admin && <p className="muted small">{t('notify.baseUrl')}</p>}
+
+        <div className="row-actions">
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? <Spinner small /> : t('common.save')}
+          </button>
+          <button type="button" className="btn" onClick={test} disabled={busy || (!st.email_enabled && !st.ntfy_enabled)}>
+            {t('notify.test')}
+          </button>
+        </div>
+      </form>
     </section>
   )
 }

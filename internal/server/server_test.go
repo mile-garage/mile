@@ -250,3 +250,34 @@ func itoa(i int64) string {
 	b, _ := json.Marshal(i)
 	return string(b)
 }
+
+func TestNotificationSettings(t *testing.T) {
+	ts := newServer(t)
+	c := newClient(t, ts)
+	c.must("POST", "/api/setup", map[string]string{"username": "gabri", "password": "password123"}, nil)
+
+	if code := c.do("PUT", "/api/me/notifications", map[string]any{"ntfy_enabled": true, "ntfy_topic": "bad topic!"}, nil); code != 400 {
+		t.Fatalf("invalid topic: %d", code)
+	}
+	if code := c.do("PUT", "/api/me/notifications", map[string]any{"ntfy_url": "file:///etc/passwd", "ntfy_topic": "x"}, nil); code != 400 {
+		t.Fatalf("invalid url: %d", code)
+	}
+	var raw map[string]any
+	c.must("PUT", "/api/me/notifications", map[string]any{
+		"ntfy_enabled": true, "ntfy_topic": "mile-gabri", "ntfy_token": "tk_secret", "days": []int{7, 30, 7, 400},
+	}, &raw)
+	if raw["has_ntfy_token"] != true || raw["ntfy_url"] != "https://ntfy.sh" || raw["smtp_configured"] != false {
+		t.Errorf("saved: %v", raw)
+	}
+	if d, _ := json.Marshal(raw["days"]); string(d) != "[30,7]" {
+		t.Errorf("days: %s", d)
+	}
+	// the token is kept when not sent again, and never returned
+	c.must("PUT", "/api/me/notifications", map[string]any{"ntfy_enabled": true, "ntfy_topic": "mile-gabri"}, &raw)
+	if raw["has_ntfy_token"] != true {
+		t.Errorf("token lost: %v", raw)
+	}
+	if b, _ := json.Marshal(raw); strings.Contains(string(b), "tk_secret") {
+		t.Error("token leaked to the browser")
+	}
+}

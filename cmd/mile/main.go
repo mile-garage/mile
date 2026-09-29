@@ -25,6 +25,7 @@ import (
 	"github.com/mile-garage/mile/internal/backup"
 	"github.com/mile-garage/mile/internal/config"
 	"github.com/mile-garage/mile/internal/db"
+	"github.com/mile-garage/mile/internal/notify"
 	"github.com/mile-garage/mile/internal/server"
 	"github.com/mile-garage/mile/internal/store"
 	"github.com/mile-garage/mile/web"
@@ -74,9 +75,15 @@ func serve(cfg config.Config) error {
 		return err
 	}
 	defer st.DB.Close()
+	smtp := notify.SMTPConfig{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername,
+		Password: cfg.SMTPPassword, From: cfg.SMTPFrom, TLS: cfg.SMTPTLS}
+	notifier := &notify.Runner{Store: st, Hour: cfg.NotifyHour, BaseURL: cfg.BaseURL,
+		Channels: []notify.Channel{&notify.Email{Config: smtp}, &notify.Ntfy{}}}
+	app := server.New(version, st, web.Dist(), cfg.MaxUploadMB)
+	app.SetNotifier(notifier, smtp.Configured())
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(version, st, web.Dist(), cfg.MaxUploadMB).Handler(),
+		Handler:           app.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
@@ -88,6 +95,8 @@ func serve(cfg config.Config) error {
 		}
 	})
 
+	go notifier.Run(ctx)
+
 	go func() {
 		<-ctx.Done()
 		shut, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -95,6 +104,9 @@ func serve(cfg config.Config) error {
 		srv.Shutdown(shut)
 	}()
 	slog.Info("MILE started", "version", version, "addr", cfg.Addr, "data", cfg.DataDir)
+	if !smtp.Configured() {
+		slog.Info("email notifications off: set MILE_SMTP_HOST and MILE_SMTP_FROM to enable them")
+	}
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}

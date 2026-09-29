@@ -17,6 +17,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 - **Fuel**: consumption with the full-to-full method (l/100 km and km/l, kWh for EVs), cost per km, average price.
 - **Photos** of your vehicles, resized in the browser (HEIC from iPhones included).
 - **Calendar feed** (iCal): subscribe from your phone and get deadlines with alerts 7 days and 1 day before.
+- **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
 - **Multi-user**: share a vehicle with your family as owner, editor or read-only.
 - **Mobile first**: installable as an app from the browser (PWA). Italian and English, light and dark theme.
 
@@ -66,7 +67,21 @@ MILE works behind Caddy, Traefik or Nginx Proxy Manager. Serve it over **HTTPS**
 | `MILE_ADDR` | `:8080` | listen address |
 | `MILE_MAX_UPLOAD_MB` | `25` | maximum attachment size |
 | `MILE_BACKUP_KEEP` | `14` | daily database backups to keep |
+| `MILE_BASE_URL` | | public address of MILE (e.g. `https://mile.example.com`), for links in notifications |
+| `MILE_NOTIFY_HOUR` | `9` | local hour from which the daily notifications are sent |
 | `TZ` | `Europe/Rome` | decides when a day starts for the deadlines |
+
+### Email notifications
+
+Each user enables email and/or ntfy in **Settings › Notifications**. ntfy needs nothing on the server; email needs an SMTP account:
+
+| Variable | Default | |
+|---|---|---|
+| `MILE_SMTP_HOST` | | SMTP server, e.g. `smtp.gmail.com` |
+| `MILE_SMTP_PORT` | `587` (`465` with `tls`) | |
+| `MILE_SMTP_USERNAME` / `MILE_SMTP_PASSWORD` | | credentials (for Gmail, an app password) |
+| `MILE_SMTP_FROM` | | sender, e.g. `MILE <mile@example.com>` |
+| `MILE_SMTP_TLS` | `starttls` | `starttls`, `tls` (implicit, port 465) or `none` |
 
 **Locked out?** Reset a password from the command line:
 
@@ -107,7 +122,7 @@ web/                 React frontend
 
 ## Roadmap
 
-- Notifications: email, ntfy / Apprise, web push
+- More notification channels: Apprise, web push
 - Login with OpenID Connect (Authentik, Authelia, Keycloak…)
 - Import from Fuelio and LubeLogger, CSV export
 - Receipt scanning

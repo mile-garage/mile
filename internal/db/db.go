@@ -226,6 +226,31 @@ DROP TABLE expenses;
 ALTER TABLE expenses_new RENAME TO expenses;
 CREATE INDEX expenses_vehicle ON expenses(vehicle_id, date);
 `,
+	`
+-- Notifications: per-user channels, and what was already sent.
+CREATE TABLE notification_settings (
+	user_id        INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+	email          TEXT NOT NULL DEFAULT '',
+	email_enabled  INTEGER NOT NULL DEFAULT 0,
+	ntfy_url       TEXT NOT NULL DEFAULT 'https://ntfy.sh',
+	ntfy_topic     TEXT NOT NULL DEFAULT '',
+	ntfy_token     TEXT NOT NULL DEFAULT '',
+	ntfy_enabled   INTEGER NOT NULL DEFAULT 0,
+	-- days before a deadline to send a reminder, e.g. '30,7,1'
+	days           TEXT NOT NULL DEFAULT '30,7,1',
+	updated_at     TEXT NOT NULL
+);
+
+-- deadline_key changes when the deadline moves (new due date or km), so a
+-- renewed deadline is notified again; stage is 'd30', 'd7', 'soon', 'overdue'...
+CREATE TABLE notification_log (
+	user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	deadline_key  TEXT NOT NULL,
+	stage         TEXT NOT NULL,
+	sent_at       TEXT NOT NULL,
+	PRIMARY KEY (user_id, deadline_key, stage)
+);
+`,
 }
 
 // migrate applies the pending migrations on a single connection with
