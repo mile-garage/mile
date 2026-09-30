@@ -954,15 +954,24 @@ textarea {
   font: inherit;
   font-size: 16px; /* 16px avoids the zoom on focus in iOS */
 }
-/* iOS Safari gives the native date input an intrinsic width that ignores width: 100% */
-input[type='date'] {
+/* iOS Safari gives the native date and time inputs an intrinsic width that ignores width: 100% */
+input[type='date'],
+input[type='month'],
+input[type='week'],
+input[type='time'],
+input[type='datetime-local'] {
   -webkit-appearance: none;
   appearance: none;
   display: block;
   min-height: 44px;
 }
-input[type='date']::-webkit-date-and-time-value {
+input::-webkit-date-and-time-value {
   text-align: left;
+}
+/* the file name next to the button must not widen the field */
+input[type='file'] {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 input:focus,
 select:focus,
