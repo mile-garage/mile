@@ -120,8 +120,9 @@ func (s *Store) vehicleDeadlines(v *Vehicle, today time.Time) ([]deadlines.Deadl
 		out = append(out, deadlines.InsuranceDeadline(p.ID, deadlines.InsuranceEnd(end, susp, today), today))
 	}
 
-	// service, oil change and automatic transmission oil: a service includes the
-	// oil change, so it resets that count too; the transmission oil is separate
+	// service, oil change, automatic transmission oil and brakes: a service
+	// includes the oil change, so it resets that count too; the transmission oil
+	// is separate; new brake discs come with new pads, so they reset both
 	for _, x := range []struct {
 		kind       deadlines.Kind
 		km         *int64
@@ -131,6 +132,8 @@ func (s *Store) vehicleDeadlines(v *Vehicle, today time.Time) ([]deadlines.Deadl
 		{deadlines.Service, v.ServiceIntervalKm, v.ServiceIntervalMonths, `'service'`},
 		{deadlines.OilChange, v.OilIntervalKm, v.OilIntervalMonths, `'oil_change', 'service'`},
 		{deadlines.TransmissionOil, v.TransmissionOilKm, v.TransmissionOilMonths, `'transmission_oil'`},
+		{deadlines.BrakePads, v.BrakePadsKm, nil, `'brake_pads', 'brake_discs'`},
+		{deadlines.BrakeDiscs, v.BrakeDiscsKm, nil, `'brake_discs'`},
 	} {
 		if x.km == nil && x.months == nil {
 			continue

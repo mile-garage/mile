@@ -33,6 +33,8 @@ const (
 	Service         Kind = "service"
 	OilChange       Kind = "oil_change"
 	TransmissionOil Kind = "transmission_oil"
+	BrakePads       Kind = "brake_pads"
+	BrakeDiscs      Kind = "brake_discs"
 	TyreChange      Kind = "tyre_change"
 	TyreRotation    Kind = "tyre_rotation"
 	Reminder        Kind = "reminder"

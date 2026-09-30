@@ -399,3 +399,41 @@ func TestTransmissionOil(t *testing.T) {
 		t.Errorf("without interval: %v", d)
 	}
 }
+
+// Brake pads and discs have their own km intervals; new discs reset the pads too.
+func TestBrakes(t *testing.T) {
+	ts := newServer(t)
+	c := newClient(t, ts)
+	c.must("POST", "/api/setup", map[string]string{"username": "gabri", "password": "password123"}, nil)
+	var v store.Vehicle
+	c.must("POST", "/api/vehicles", map[string]any{"name": "Panda", "kind": "car", "fuel_type": "petrol",
+		"registration_date": "2020-03-01", "initial_odometer": 0,
+		"brake_pads_interval_km": 40000, "brake_discs_interval_km": 80000}, &v)
+	if v.BrakePadsKm == nil || *v.BrakePadsKm != 40000 || *v.BrakeDiscsKm != 80000 {
+		t.Fatalf("vehicle: %+v", v)
+	}
+	vp := "/api/vehicles/" + itoa(v.ID)
+	find := func(kind string) map[string]any {
+		var ds []map[string]any
+		c.must("GET", vp+"/deadlines", nil, &ds)
+		for _, d := range ds {
+			if d["kind"] == kind {
+				return d
+			}
+		}
+		return nil
+	}
+	if p, d := find("brake_pads"), find("brake_discs"); p["due_km"] != float64(40000) || d["due_km"] != float64(80000) {
+		t.Fatalf("from registration: %v %v", p, d)
+	}
+	// new pads do not change the discs...
+	c.must("POST", vp+"/expenses", map[string]any{"date": "2023-01-10", "category": "brake_pads", "amount_cents": 8000, "odometer": 38000}, nil)
+	if p, d := find("brake_pads"), find("brake_discs"); p["due_km"] != float64(78000) || d["due_km"] != float64(80000) {
+		t.Errorf("after the pads: %v %v", p, d)
+	}
+	// ...new discs reset both.
+	c.must("POST", vp+"/expenses", map[string]any{"date": "2025-01-10", "category": "brake_discs", "amount_cents": 25000, "odometer": 79000}, nil)
+	if p, d := find("brake_pads"), find("brake_discs"); p["due_km"] != float64(119000) || d["due_km"] != float64(159000) {
+		t.Errorf("after the discs: %v %v", p, d)
+	}
+}

@@ -108,6 +108,8 @@ export interface VehicleInput {
   oil_interval_months: number | null
   transmission_oil_interval_km: number | null
   transmission_oil_interval_months: number | null
+  brake_pads_interval_km: number | null
+  brake_discs_interval_km: number | null
   tyre_rotation_km: number | null
   notes: string
 }
@@ -122,7 +124,7 @@ export interface Vehicle extends VehicleInput {
   updated_at: string
 }
 
-export type DeadlineKind = 'inspection' | 'road_tax' | 'insurance' | 'service' | 'oil_change' | 'transmission_oil' | 'tyre_change' | 'tyre_rotation' | 'reminder'
+export type DeadlineKind = 'inspection' | 'road_tax' | 'insurance' | 'service' | 'oil_change' | 'transmission_oil' | 'brake_pads' | 'brake_discs' | 'tyre_change' | 'tyre_rotation' | 'reminder'
 export type DeadlineStatus = 'overdue' | 'grace' | 'due_soon' | 'ok' | 'suspended'
 
 export interface Deadline {
@@ -162,6 +164,8 @@ export type ExpenseCategory =
   | 'service'
   | 'oil_change'
   | 'transmission_oil'
+  | 'brake_pads'
+  | 'brake_discs'
   | 'maintenance'
   | 'repair'
   | 'tyres'
@@ -176,6 +180,8 @@ export const expenseCategories: ExpenseCategory[] = [
   'service',
   'oil_change',
   'transmission_oil',
+  'brake_pads',
+  'brake_discs',
   'inspection',
   'road_tax',
   'maintenance',

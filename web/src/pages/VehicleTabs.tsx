@@ -51,6 +51,8 @@ export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabPr
     service: { category: 'service', odometer: km },
     oil_change: { category: 'oil_change', odometer: km },
     transmission_oil: { category: 'transmission_oil', odometer: km },
+    brake_pads: { category: 'brake_pads', odometer: km },
+    brake_discs: { category: 'brake_discs', odometer: km },
     // a payment made for the deadline covers the 12 months after the expired one
     road_tax: { category: 'road_tax', valid_until: roadTax?.due ? addMonths(roadTax.due, 11).slice(0, 7) : null },
   }
@@ -105,6 +107,18 @@ export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabPr
             <button className="btn" onClick={() => setExpense(presets.transmission_oil)}>
               <Icon name="check" size={16} />
               {t('quick.transmissionOil')}
+            </button>
+          )}
+          {vehicle.brake_pads_interval_km && (
+            <button className="btn" onClick={() => setExpense(presets.brake_pads)}>
+              <Icon name="check" size={16} />
+              {t('quick.brakePads')}
+            </button>
+          )}
+          {vehicle.brake_discs_interval_km && (
+            <button className="btn" onClick={() => setExpense(presets.brake_discs)}>
+              <Icon name="check" size={16} />
+              {t('quick.brakeDiscs')}
             </button>
           )}
           <button className="btn" onClick={() => setReminder('new')}>

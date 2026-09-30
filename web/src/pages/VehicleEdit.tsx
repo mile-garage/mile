@@ -35,6 +35,8 @@ const empty: VehicleInput = {
   oil_interval_months: null,
   transmission_oil_interval_km: null,
   transmission_oil_interval_months: null,
+  brake_pads_interval_km: null,
+  brake_discs_interval_km: null,
   tyre_rotation_km: null,
   notes: '',
 }
@@ -61,6 +63,8 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     oil_interval_months: numInput(vehicle?.oil_interval_months),
     transmission_oil_interval_km: numInput(vehicle?.transmission_oil_interval_km),
     transmission_oil_interval_months: numInput(vehicle?.transmission_oil_interval_months),
+    brake_pads_interval_km: numInput(vehicle?.brake_pads_interval_km),
+    brake_discs_interval_km: numInput(vehicle?.brake_discs_interval_km),
     tyre_rotation_km: numInput(vehicle?.tyre_rotation_km),
   })
   const [busy, setBusy] = useState(false)
@@ -234,6 +238,12 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
                 </Field>
               </>
             )}
+            <Field label={t('vehicle.brakePadsKm')} hint={t('vehicle.brakePadsHint')}>
+              <input inputMode="numeric" value={nums.brake_pads_interval_km} onChange={(e) => setNum('brake_pads_interval_km', e.target.value)} placeholder="40000" />
+            </Field>
+            <Field label={t('vehicle.brakeDiscsKm')} hint={t('vehicle.brakeDiscsHint')}>
+              <input inputMode="numeric" value={nums.brake_discs_interval_km} onChange={(e) => setNum('brake_discs_interval_km', e.target.value)} placeholder="80000" />
+            </Field>
             {!twoWheels(v.kind) && (
               <Field label={t('vehicle.tyreRotationKm')} hint={t('vehicle.tyreRotationHint')} wide>
                 <input inputMode="numeric" value={nums.tyre_rotation_km} onChange={(e) => setNum('tyre_rotation_km', e.target.value)} placeholder="10000" />

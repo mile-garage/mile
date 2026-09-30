@@ -318,6 +318,30 @@ DROP TABLE expenses;
 ALTER TABLE expenses_new RENAME TO expenses;
 CREATE INDEX expenses_vehicle ON expenses(vehicle_id, date);
 `,
+	`
+-- Brake pads and discs: their own optional km intervals and expense categories.
+ALTER TABLE vehicles ADD COLUMN brake_pads_interval_km INTEGER;
+ALTER TABLE vehicles ADD COLUMN brake_discs_interval_km INTEGER;
+
+CREATE TABLE expenses_new (
+	id            INTEGER PRIMARY KEY,
+	vehicle_id    INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+	date          TEXT NOT NULL,
+	category      TEXT NOT NULL CHECK (category IN ('road_tax','inspection','service','oil_change','transmission_oil','brake_pads','brake_discs','maintenance','repair','tyres','parking','tolls','fine','wash','accessories','other')),
+	description   TEXT NOT NULL DEFAULT '',
+	amount_cents  INTEGER NOT NULL,
+	odometer      INTEGER,
+	vendor        TEXT NOT NULL DEFAULT '',
+	valid_until   TEXT,
+	notes         TEXT NOT NULL DEFAULT '',
+	created_at    TEXT NOT NULL,
+	updated_at    TEXT NOT NULL
+);
+INSERT INTO expenses_new SELECT * FROM expenses;
+DROP TABLE expenses;
+ALTER TABLE expenses_new RENAME TO expenses;
+CREATE INDEX expenses_vehicle ON expenses(vehicle_id, date);
+`,
 }
 
 // migrate applies the pending migrations on a single connection with

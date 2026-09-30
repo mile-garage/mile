@@ -13,6 +13,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
   - **Service (tagliando)**: due every N km or M months, whichever comes first. The km limit is turned into a date using your average daily distance.
   - **Oil change**: its own km/months interval, handy for motorcycles and scooters. A service also resets it.
   - **Automatic transmission oil** (optional): its own km/months interval, for automatic and dual-clutch gearboxes.
+  - **Brake pads and discs** (optional): each with its own km interval. New discs reset the pads too.
   - **Tyres**: summer, winter and all-season sets. With summer tyres fitted, winter ones are due by 15 November (required until 15 April); with winter tyres, summer ones by 15 May. Front/rear rotation every N km, and the km driven on each set.
   - **Custom reminders** (driving licence…), optionally repeating.
 - **Expenses** by category, with PDF invoices and photos of receipts attached.
