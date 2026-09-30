@@ -954,6 +954,16 @@ textarea {
   font: inherit;
   font-size: 16px; /* 16px avoids the zoom on focus in iOS */
 }
+/* iOS Safari gives the native date input an intrinsic width that ignores width: 100% */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-height: 44px;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
 input:focus,
 select:focus,
 textarea:focus {
