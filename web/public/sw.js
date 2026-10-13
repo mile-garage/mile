@@ -6,7 +6,7 @@
 // through the cache: data is always fresh and nothing stays after logging out.
 //
 // - pages: network first, the cached page when offline;
-// - /assets/ (hashed names, never change): cache first;
+// - /assets/ (hashed names, never change), fonts included: cache first;
 // - icons and manifest: cache, refreshed in the background.
 // This file does not change between releases: a new version of MILE is picked
 // up with the page, and the files it no longer uses are removed.
@@ -20,6 +20,8 @@ function assetsOf(html) {
 }
 
 // savePage caches index.html with its assets, and drops the assets of older versions.
+// The fonts are listed in the stylesheets rather than in the page: they are
+// cached too (woff2 only, the format every supported browser reads).
 async function savePage(res) {
   const cache = await caches.open(CACHE)
   const html = await res.clone().text()
@@ -27,6 +29,13 @@ async function savePage(res) {
   const missing = []
   for (const a of assets) if (!(await cache.match(a))) missing.push(a)
   await cache.addAll(missing)
+  for (const a of assets.filter((x) => x.endsWith('.css'))) {
+    const css = await (await cache.match(a)).text()
+    for (const f of assetsOf(css).filter((x) => x.endsWith('.woff2'))) {
+      if (!assets.includes(f)) assets.push(f)
+      if (!(await cache.match(f))) await cache.add(f)
+    }
+  }
   await cache.put('/', res)
   for (const req of await cache.keys()) {
     const path = new URL(req.url).pathname
