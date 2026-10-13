@@ -863,7 +863,6 @@ textarea {
 /* Italian number plate: blue bands, black characters */
 .plate {
   display: inline-flex;
-  align-self: flex-start;
   flex: none;
   height: 30px;
   border: 1.5px solid #1b2633;
