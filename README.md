@@ -8,22 +8,22 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 
 - **Deadlines computed, not typed in**
   - **Inspection (revisione)**: the first one is due 4 years after registration, then every 2 years, by the end of the month. A yearly rule is available for taxis and heavy vehicles.
-  - **Road tax (bollo)**: due by the last day of the month after it expires. Exemptions are supported (e.g. electric and historic vehicles).
+  - **Road tax (bollo)**: due by the last day of the month after it expires. The expiry month is taken from the registration date. Exemptions are supported (e.g. electric and historic vehicles).
   - **Insurance with suspensions**: the expiry moves forward by the suspended days. The 15-day grace period is shown.
-  - **Service (tagliando)**: due every N km or M months, whichever comes first. The km limit is turned into a date using your average daily distance.
+  - **Service (tagliando)**: due every N km or M months, whichever comes first: a new vehicle starts with 15,000 km or 12 months (10,000 km for motorcycles, 5,000 for mopeds). The km limit is turned into a date using your average daily distance.
   - **Oil change**: its own km/months interval, handy for motorcycles and scooters. A service also resets it.
   - **Automatic transmission oil** (optional): its own km/months interval, for automatic and dual-clutch gearboxes.
   - **Brake pads and discs** (optional): each with its own km interval. New discs reset the pads too.
   - **Tyres**: summer, winter and all-season sets. With summer tyres fitted, winter ones are due by 15 November (required until 15 April); with winter tyres, summer ones by 15 May. Front/rear rotation every N km, and the km driven on each set.
   - **Custom reminders** (driving licence…), optionally repeating.
-- **Expenses** by category, with PDF invoices and photos of receipts attached.
+- **Expenses** by category, with PDF invoices and photos of receipts attached. A page shows what your vehicles cost month by month, all of them or one.
 - **Fuel**: consumption with the full-to-full method (l/100 km and km/l, kWh for EVs), cost per km, average price.
 - **Photos** of your vehicles, resized in the browser (HEIC from iPhones included).
 - **Calendar feed** (iCal): subscribe from your phone and get deadlines with alerts 7 days and 1 day before.
 - **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
 - **Multi-user**: share a vehicle with your family as owner, editor or read-only. Single sign-on with Authentik, Authelia, Keycloak or any OpenID Connect provider.
 - **Your data, in and out**: import from [Fuelio](https://www.fuel.io) and [LubeLogger](https://lubelogger.com); export everything as CSV files ready for Excel, with the attachments if you want.
-- **Mobile first**: installable as an app from the browser (PWA), and it opens even without a connection. Italian and English, light and dark theme.
+- **Mobile first**: log a refuel, a service or an expense in a few taps from the **+** button. Installable as an app from the browser (PWA), and it opens even without a connection. Italian and English, light and dark theme.
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
 
@@ -113,12 +113,12 @@ docker compose exec mile /mile reset-password <username> <new-password>
 
 ### Import from Fuelio and LubeLogger, export to CSV
 
-Open a vehicle and choose **Import**. MILE shows what it will add before saving anything, and skips the records it already has, so importing the same file twice is harmless.
+Open a vehicle and choose **Import** from its **⋯** menu. MILE shows what it will add before saving anything, and skips the records it already has, so importing the same file twice is harmless.
 
 - **Fuelio**: make a CSV backup and upload the `vehicle-N-sync.csv` of that vehicle (or the `.zip` from Google Drive). Refuels and costs are imported; miles and gallons are converted.
 - **LubeLogger**: in each tab of the vehicle choose *Export to CSV*, then upload one file at a time saying what it contains (gas, service, repairs, upgrades, taxes, odometer) and its units. Dates and amounts are read whatever the language of the server.
 
-**Export** a vehicle, or all of them from **Settings › Your data**: a ZIP with a CSV per kind of data, either for spreadsheets (`;`, decimal comma, headers in your language: opens with a double click in Excel set to Italian) or standard CSV, optionally with the attachments.
+**Export** a vehicle from the same menu, or all of them from **Settings › Your data**: a ZIP with a CSV per kind of data, either for spreadsheets (`;`, decimal comma, headers in your language: opens with a double click in Excel set to Italian) or standard CSV, optionally with the attachments.
 
 **Backups**: every day `/data/backups/mile-YYYY-MM-DD.db` is created. To restore, stop the container, replace `/data/mile.db` with a backup, and start it again. Attachments live in `/data/files`.
 
