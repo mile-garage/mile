@@ -24,7 +24,7 @@ import {
   type Vehicle,
 } from '../api'
 import { useI18n, type T } from '../i18n'
-import { addMonths, centsInput, num, numInput, parseCents, parseNumber, today, unit } from '../format'
+import { addMonths, centsInput, month, num, numInput, parseCents, parseNumber, today, unit } from '../format'
 import { FileList, upload, UploadButton, type UploadTarget } from './Files'
 import { Icon } from './Icon'
 import { Field, Modal, Spinner, useUI } from './ui'
@@ -41,13 +41,24 @@ function Actions({ busy, onClose, onDelete }: { busy: boolean; onClose: () => vo
           {t('common.delete')}
         </button>
       )}
-      <button type="button" className="btn" onClick={onClose}>
+      <button type="button" className="btn btn-cancel" onClick={onClose}>
         {t('common.cancel')}
       </button>
       <button className="btn btn-primary" disabled={busy}>
         {busy ? <Spinner small /> : t('common.save')}
       </button>
     </div>
+  )
+}
+
+/** Shows or hides the fields that are rarely needed. */
+export function MoreToggle({ open, onToggle, label }: { open: boolean; onToggle: () => void; label: string }) {
+  const { t } = useI18n()
+  return (
+    <button type="button" className="more-toggle" aria-expanded={open} onClick={onToggle}>
+      {open ? t('form.less') : label}
+      <Icon name={open ? 'up' : 'down'} size={18} />
+    </button>
   )
 }
 
@@ -61,12 +72,14 @@ function FormFiles({
   pending,
   setPending,
   onChange,
+  label,
 }: {
   target: UploadTarget | null
   existing: Attachment[]
   pending: File[]
   setPending: (f: File[]) => void
   onChange: (a: Attachment[]) => void
+  label?: string
 }) {
   const { t } = useI18n()
   return (
@@ -88,11 +101,11 @@ function FormFiles({
         </ul>
       )}
       {target ? (
-        <UploadButton target={target} multiple onUploaded={(a) => onChange([...existing, a])} />
+        <UploadButton target={target} multiple label={label} onUploaded={(a) => onChange([...existing, a])} />
       ) : (
         <label className="btn btn-sm file-pick">
           <Icon name="paperclip" size={16} />
-          {t('files.attach')}
+          {label ?? t('files.attach')}
           <input
             type="file"
             hidden
@@ -157,32 +170,88 @@ function useDelete(url: string | null, text: string, onDone: () => void) {
 
 // ---- expense ----
 
+/** Work on the vehicle: these reset a deadline, or are maintenance. */
+export const serviceCategories: ExpenseCategory[] = [
+  'service',
+  'oil_change',
+  'transmission_oil',
+  'brake_pads',
+  'brake_discs',
+  'inspection',
+  'tyres',
+  'repair',
+  'maintenance',
+]
+const otherCategories = expenseCategories.filter((c) => !serviceCategories.includes(c))
+
+/** Next deadlines set by an expense, shown before saving: "Tagliando · a 134.800 km o entro ottobre 2027". */
+function expenseEffects(category: ExpenseCategory, v: Vehicle, day: string, km: number | null, t: T, locale: 'it' | 'en') {
+  const when = (everyKm: number | null, everyMonths: number | null) => {
+    const parts: string[] = []
+    if (everyKm && km !== null && !Number.isNaN(km)) parts.push(t('effects.at', { km: num(km + everyKm, locale) }))
+    if (everyMonths && day) parts.push(t('effects.by', { month: month(addMonths(day, everyMonths).slice(0, 7), locale) }))
+    return parts.length === 2 ? t('effects.or', { a: parts[0], b: parts[1] }) : (parts[0] ?? '')
+  }
+  const lines: { label: string; text: string }[] = []
+  const add = (label: string, text: string) => text && lines.push({ label, text })
+  switch (category) {
+    case 'service':
+      add(t('cat.service'), when(v.service_interval_km, v.service_interval_months))
+      if (v.oil_interval_km || v.oil_interval_months) add(t('cat.oil_change'), when(v.oil_interval_km, v.oil_interval_months))
+      break
+    case 'oil_change':
+      add(t('cat.oil_change'), when(v.oil_interval_km, v.oil_interval_months))
+      break
+    case 'transmission_oil':
+      add(t('cat.transmission_oil'), when(v.transmission_oil_interval_km, v.transmission_oil_interval_months))
+      break
+    case 'brake_pads':
+      add(t('cat.brake_pads'), when(v.brake_pads_interval_km, null))
+      break
+    case 'brake_discs':
+      add(t('cat.brake_discs'), when(v.brake_discs_interval_km, null))
+      if (v.brake_pads_interval_km) add(t('cat.brake_pads'), when(v.brake_pads_interval_km, null))
+      break
+    case 'inspection':
+      if (v.inspection_rule !== 'none') add(t('cat.inspection'), when(null, v.inspection_rule === 'annual' ? 12 : 24))
+      break
+  }
+  return lines
+}
+
 export function ExpenseForm({
   vehicle,
   expense,
   preset,
+  mode,
   onSaved,
   onClose,
 }: {
   vehicle: Vehicle
   expense?: Expense
   preset?: Partial<ExpenseInput>
+  /** service: work on the vehicle; other: road tax, tolls, parking… Taken from the category when missing. */
+  mode?: 'service' | 'other'
   onSaved: () => void
   onClose: () => void
 }) {
   const { t, locale } = useI18n()
   const { toast, fail } = useUI()
   const init = { ...preset, ...expense }
+  const kind = mode ?? (init.category && !serviceCategories.includes(init.category) ? 'other' : 'service')
+  const cats = (kind === 'service' ? serviceCategories : otherCategories).filter((c) => c !== 'transmission_oil' || !twoWheels(vehicle.kind) || c === init.category)
   const [date, setDate] = useState(init.date ?? today())
-  const [category, setCategory] = useState<ExpenseCategory>(init.category ?? 'service')
+  const [category, setCategory] = useState<ExpenseCategory>(init.category ?? cats[0])
   const [amount, setAmount] = useState(centsInput(init.amount_cents))
-  const [odometer, setOdometer] = useState(numInput(init.odometer))
+  // a new service starts from the km the vehicle has now
+  const [odometer, setOdometer] = useState(numInput(init.odometer !== undefined ? init.odometer : kind === 'service' ? vehicle.current_km : null))
   const [description, setDescription] = useState(init.description ?? '')
   const [vendor, setVendor] = useState(init.vendor ?? '')
   const [validUntil, setValidUntil] = useState(init.valid_until ?? '')
   const [notes, setNotes] = useState(init.notes ?? '')
   const [files, setFiles] = useState<Attachment[]>(expense?.attachments ?? [])
   const [pending, setPending] = useState<File[]>([])
+  const [more, setMore] = useState(!!(init.description || init.vendor || init.notes))
   const { busy, run } = useSubmit()
 
   const submit = (e: FormEvent) => {
@@ -211,49 +280,75 @@ export function ExpenseForm({
   }
 
   const onDelete = useDelete(expense ? `/api/expenses/${expense.id}` : null, t('expense.deleteText'), onSaved)
+  const effects = expense ? [] : expenseEffects(category, vehicle, date, parseNumber(odometer), t, locale)
+  const title = kind === 'service' ? (expense ? t('service.edit') : t('service.new')) : expense ? t('expense.edit') : t('expense.new')
 
   return (
-    <Modal title={expense ? t('expense.edit') : t('expense.new')} onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
-        <Field label={t('expense.category')}>
-          <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>
-            {expenseCategories.map((c) => (
-              <option key={c} value={c}>
+    <Modal title={title} sub={vehicle.name} onClose={onClose}>
+      <form className="stack" onSubmit={submit}>
+        <div className="field">
+          <span className="field-label">{kind === 'service' ? t('service.what') : t('expense.what')}</span>
+          <div className="chips" role="radiogroup">
+            {cats.map((c) => (
+              <button type="button" key={c} role="radio" aria-checked={c === category} className={`chip${c === category ? ' on' : ''}`} onClick={() => setCategory(c)}>
                 {t(`cat.${c}`)}
-              </option>
+              </button>
             ))}
-          </select>
-        </Field>
-        <Field label={t('common.date')}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </Field>
-        <Field label={t('common.amount') + ' (€)'}>
-          <NumInput decimal value={amount} onChange={setAmount} required placeholder="0,00" />
-        </Field>
-        <Field label={`${t('common.km')} (${t('common.optional')})`} hint={vehicle.current_km !== null ? t('refuel.odometerHint', { km: num(vehicle.current_km, locale) }) : undefined}>
-          <NumInput value={odometer} onChange={setOdometer} />
-        </Field>
+          </div>
+        </div>
+        <div>
+          <div className="big-fields">
+            <label className="big-field">
+              <span>{t('common.amount')} €</span>
+              <NumInput decimal value={amount} onChange={setAmount} required placeholder="0,00" autoFocus={!expense && !preset?.amount_cents} />
+            </label>
+            <label className="big-field">
+              <span>{t('common.km')}</span>
+              <NumInput value={odometer} onChange={setOdometer} placeholder={t('common.optional')} />
+            </label>
+          </div>
+          {vehicle.current_km !== null && <p className="form-hint">{t('refuel.odometerHint', { km: num(vehicle.current_km, locale) })}</p>}
+        </div>
         {category === 'road_tax' && (
-          <Field label={t('expense.validUntil')} wide>
+          <Field label={t('expense.validUntil')}>
             <input type="month" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
           </Field>
         )}
-        <Field label={t('expense.description')} wide>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} />
-        </Field>
-        <Field label={t('expense.vendor')} wide>
-          <input value={vendor} onChange={(e) => setVendor(e.target.value)} />
-        </Field>
-        <Field label={t('common.notes')} wide>
-          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </Field>
+        {effects.length > 0 && (
+          <div className="effects">
+            <div className="effects-title">{t('effects.title')}</div>
+            {effects.map((x) => (
+              <div key={x.label}>
+                <strong>{x.label}</strong> · {x.text}
+              </div>
+            ))}
+          </div>
+        )}
         <FormFiles
           target={expense ? { vehicleId: vehicle.id, kind: 'document', expense_id: expense.id } : null}
           existing={files}
           pending={pending}
           setPending={setPending}
           onChange={setFiles}
+          label={t('files.attachReceipt')}
         />
+        <MoreToggle open={more} onToggle={() => setMore(!more)} label={t('expense.more')} />
+        {more && (
+          <div className="form-grid">
+            <Field label={t('common.date')}>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            </Field>
+            <Field label={t('expense.vendor')}>
+              <input value={vendor} onChange={(e) => setVendor(e.target.value)} />
+            </Field>
+            <Field label={t('expense.description')} wide>
+              <input value={description} onChange={(e) => setDescription(e.target.value)} />
+            </Field>
+            <Field label={t('common.notes')} wide>
+              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </Field>
+          </div>
+        )}
         <Actions busy={busy} onClose={onClose} onDelete={onDelete} />
       </form>
     </Modal>
@@ -287,23 +382,25 @@ export function RefuelForm({
   const [notes, setNotes] = useState(refuel?.notes ?? '')
   const [files, setFiles] = useState<Attachment[]>(refuel?.attachments ?? [])
   const [pending, setPending] = useState<File[]>([])
+  const [more, setMore] = useState(!!(refuel && (refuel.station || refuel.notes || refuel.missed_previous)))
   const { busy, run } = useSubmit()
 
+  const ok = (v: number | null) => v !== null && !Number.isNaN(v) && v > 0
   // With two of quantity, unit price and total, compute the third.
   const complete = () => {
     const q = parseNumber(quantity)
     const p = parseNumber(price)
     const tot = parseNumber(total)
-    const ok = (v: number | null) => v !== null && !Number.isNaN(v) && v > 0
     if (ok(q) && ok(p) && !ok(tot)) setTotal((q! * p!).toFixed(2).replace('.', ','))
     else if (ok(tot) && ok(p) && !ok(q)) setQuantity((tot! / p!).toFixed(2).replace('.', ','))
-    else if (ok(tot) && ok(q) && !ok(p)) setPrice((tot! / q!).toFixed(3).replace('.', ','))
   }
+  const q = parseNumber(quantity)
+  const tot = parseNumber(total)
+  const computed = ok(q) && ok(tot) ? tot! / q! : null
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const km = parseNumber(odometer)
-    const q = parseNumber(quantity)
     const cents = parseCents(total)
     if (!checkNum(km, true) || !checkNum(q, true) || !checkNum(cents, true)) return fail(new Error(t('err.number')))
     const body: RefuelInput = {
@@ -327,49 +424,67 @@ export function RefuelForm({
   }
 
   const onDelete = useDelete(refuel ? `/api/refuels/${refuel.id}` : null, t('refuel.deleteText'), onSaved)
+  const hint = [
+    vehicle.current_km !== null && !refuel ? t('refuel.odometerHint', { km: num(vehicle.current_km, locale) }) : '',
+    computed !== null ? t('refuel.priceComputed', { price: num(computed, locale, 3), unit: u }) : '',
+  ].filter(Boolean)
 
   return (
-    <Modal title={refuel ? t('refuel.edit') : t('refuel.new')} onClose={onClose}>
-      <form className="form-grid" onSubmit={submit}>
-        <Field label={t('common.date')}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </Field>
-        <Field label={t('common.km')} hint={vehicle.current_km !== null && !refuel ? t('refuel.odometerHint', { km: num(vehicle.current_km, locale) }) : undefined}>
-          <NumInput value={odometer} onChange={setOdometer} required autoFocus={!refuel} />
-        </Field>
-        <Field label={t('refuel.quantity', { unit: u })}>
-          <NumInput decimal value={quantity} onChange={setQuantity} onBlur={complete} required />
-        </Field>
-        <Field label={t('refuel.unitPrice', { unit: u }) + ' (€)'}>
-          <NumInput decimal value={price} onChange={setPrice} onBlur={complete} placeholder={t('common.optional')} />
-        </Field>
-        <Field label={t('refuel.total') + ' (€)'} wide>
-          <NumInput decimal value={total} onChange={setTotal} onBlur={complete} required />
-        </Field>
-        <label className="check field-wide">
-          <input type="checkbox" checked={full} onChange={(e) => setFull(e.target.checked)} />
+    <Modal title={refuel ? t('refuel.edit') : t('add.refuel')} sub={vehicle.name} onClose={onClose}>
+      <form className="stack" onSubmit={submit}>
+        <div>
+          <div className="big-fields">
+            <label className="big-field">
+              <span>{t('common.km')}</span>
+              <NumInput value={odometer} onChange={setOdometer} required autoFocus={!refuel} />
+            </label>
+            <label className="big-field">
+              <span>{t('refuel.quantity', { unit: u })}</span>
+              <NumInput decimal value={quantity} onChange={setQuantity} onBlur={complete} required />
+            </label>
+            <label className="big-field">
+              <span>{t('common.total')} €</span>
+              <NumInput decimal value={total} onChange={setTotal} onBlur={complete} required />
+            </label>
+          </div>
+          {hint.length > 0 && <p className="form-hint">{hint.join(' · ')}</p>}
+        </div>
+        <label className="switch-row">
           {t('refuel.full')}
+          <input type="checkbox" className="switch" checked={full} onChange={(e) => setFull(e.target.checked)} />
         </label>
-        <label className="check field-wide">
-          <input type="checkbox" checked={missed} onChange={(e) => setMissed(e.target.checked)} />
-          <span>
-            {t('refuel.missed')}
-            <span className="field-hint">{t('refuel.missedHint')}</span>
-          </span>
-        </label>
-        <Field label={t('refuel.station')} wide>
-          <input value={station} onChange={(e) => setStation(e.target.value)} />
-        </Field>
-        <Field label={t('common.notes')} wide>
-          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </Field>
-        <FormFiles
-          target={refuel ? { vehicleId: vehicle.id, kind: 'document', refuel_id: refuel.id } : null}
-          existing={files}
-          pending={pending}
-          setPending={setPending}
-          onChange={setFiles}
-        />
+        <MoreToggle open={more} onToggle={() => setMore(!more)} label={t('refuel.more')} />
+        {more && (
+          <div className="form-grid">
+            <Field label={t('common.date')}>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            </Field>
+            <Field label={t('refuel.unitPrice', { unit: u }) + ' (€)'}>
+              <NumInput decimal value={price} onChange={setPrice} onBlur={complete} placeholder={t('common.optional')} />
+            </Field>
+            <Field label={t('refuel.station')} wide>
+              <input value={station} onChange={(e) => setStation(e.target.value)} />
+            </Field>
+            <label className="check field-wide">
+              <input type="checkbox" checked={missed} onChange={(e) => setMissed(e.target.checked)} />
+              <span>
+                {t('refuel.missed')}
+                <span className="field-hint">{t('refuel.missedHint')}</span>
+              </span>
+            </label>
+            <Field label={t('common.notes')} wide>
+              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </Field>
+            <FormFiles
+              target={refuel ? { vehicleId: vehicle.id, kind: 'document', refuel_id: refuel.id } : null}
+              existing={files}
+              pending={pending}
+              setPending={setPending}
+              onChange={setFiles}
+              label={t('files.attachReceipt')}
+            />
+          </div>
+        )}
         <Actions busy={busy} onClose={onClose} onDelete={onDelete} />
       </form>
     </Modal>
@@ -558,11 +673,17 @@ export function OdometerForm({ vehicle, onSaved, onClose }: { vehicle: Vehicle; 
     })
   }
   return (
-    <Modal title={t('vehicle.updateKm')} onClose={onClose} narrow>
-      <form className="form-grid" onSubmit={submit}>
-        <Field label={t('common.km')} hint={vehicle.current_km !== null ? t('refuel.odometerHint', { km: num(vehicle.current_km, locale) }) : undefined}>
-          <NumInput value={km} onChange={setKm} required autoFocus />
-        </Field>
+    <Modal title={t('vehicle.updateKm')} sub={vehicle.name} onClose={onClose} narrow>
+      <form className="stack" onSubmit={submit}>
+        <div>
+          <div className="big-fields">
+            <label className="big-field">
+              <span>{t('common.km')}</span>
+              <NumInput value={km} onChange={setKm} required autoFocus />
+            </label>
+          </div>
+          {vehicle.current_km !== null && <p className="form-hint">{t('refuel.odometerHint', { km: num(vehicle.current_km, locale) })}</p>}
+        </div>
         <Field label={t('common.date')}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </Field>

@@ -95,11 +95,13 @@ const modalStack: object[] = []
 /** Dialog; on phones it becomes a bottom sheet. */
 export function Modal({
   title,
+  sub,
   children,
   onClose,
   narrow,
 }: {
   title: ReactNode
+  sub?: ReactNode
   children: ReactNode
   onClose: () => void
   narrow?: boolean
@@ -126,7 +128,10 @@ export function Modal({
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal${narrow ? ' modal-narrow' : ''}`} role="dialog" aria-modal="true">
         <div className="modal-head">
-          <h2>{title}</h2>
+          <div>
+            <h2>{title}</h2>
+            {sub && <div className="muted">{sub}</div>}
+          </div>
           <button className="btn-icon" onClick={onClose} aria-label={t('common.close')}>
             ×
           </button>
@@ -153,11 +158,21 @@ export function Loading() {
   )
 }
 
-/** Loads data from the API; reload() fetches it again. */
+/** Tells the loaded data that something changed, e.g. a record saved from the "+" sheet. */
+export function notifyChanged() {
+  window.dispatchEvent(new Event('mile:changed'))
+}
+
+/** Loads data from the API; reload() fetches it again, as does notifyChanged(). */
 export function useLoad<T>(url: string | null, version = 0) {
   const { fail } = useUI()
   const [data, setData] = useState<T | null>(null)
   const [n, setN] = useState(0)
+  useEffect(() => {
+    const onChange = () => setN((x) => x + 1)
+    window.addEventListener('mile:changed', onChange)
+    return () => window.removeEventListener('mile:changed', onChange)
+  }, [])
   useEffect(() => {
     if (!url) return
     let alive = true

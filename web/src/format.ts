@@ -90,3 +90,10 @@ export function bytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
+
+/** "FZ731RT" → "FZ 731 RT", the way Italian car plates are printed. */
+export function plateText(p: string): string {
+  const s = p.replace(/\s+/g, '').toUpperCase()
+  const car = /^([A-Z]{2})(\d{3})([A-Z]{2})$/.exec(s)
+  return car ? `${car[1]} ${car[2]} ${car[3]}` : p
+}

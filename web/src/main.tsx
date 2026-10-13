@@ -11,6 +11,13 @@ import { Vehicles } from './pages/Vehicles'
 import { VehicleDetail } from './pages/VehicleDetail'
 import { VehicleEdit } from './pages/VehicleEdit'
 import { Settings } from './pages/Settings'
+import { Expenses } from './pages/Expenses'
+import '@fontsource/barlow/latin-400.css'
+import '@fontsource/barlow/latin-500.css'
+import '@fontsource/barlow/latin-600.css'
+import '@fontsource/barlow/latin-700.css'
+import '@fontsource/barlow-semi-condensed/latin-600.css'
+import '@fontsource/barlow-semi-condensed/latin-700.css'
 import './styles.css'
 
 const router = createBrowserRouter([
@@ -22,6 +29,7 @@ const router = createBrowserRouter([
       { path: '/vehicles/new', element: <VehicleEdit key="new" /> },
       { path: '/vehicles/:id', element: <VehicleDetail /> },
       { path: '/vehicles/:id/edit', element: <VehicleEdit /> },
+      { path: '/expenses', element: <Expenses /> },
       { path: '/settings', element: <Settings /> },
       { path: '*', element: <Dashboard /> },
     ],

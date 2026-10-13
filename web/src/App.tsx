@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router'
-import { api, ApiError, takeParam, type Status, type User } from './api'
+import { NavLink, Outlet, useMatch } from 'react-router'
+import { api, ApiError, takeParam, type Status, type User, type Vehicle } from './api'
 import { I18nProvider, useI18n } from './i18n'
-import { Field, Spinner, UIProvider, useUI } from './components/ui'
+import { Field, Spinner, UIProvider, useLoad, useUI } from './components/ui'
 import { Icon } from './components/Icon'
+import { AddProvider, useAdd } from './components/Add'
+import { Plate } from './pages/Vehicles'
 
 interface Session {
   user: User
@@ -99,37 +101,98 @@ function AuthGate() {
 }
 
 function Layout() {
+  return (
+    <AddProvider>
+      <div className="app">
+        <Sidebar />
+        <main className="content">
+          <Outlet />
+        </main>
+        <BottomNav />
+      </div>
+    </AddProvider>
+  )
+}
+
+/** Desktop and tablet: sections, the vehicles and the "+" button. */
+function Sidebar() {
   const { t } = useI18n()
-  const nav = (
-    <>
+  const { openAdd } = useAdd()
+  const { data } = useLoad<Vehicle[]>('/api/vehicles')
+  const vehicles = (data ?? []).filter((v) => !v.archived)
+  return (
+    <aside className="sidebar">
+      <NavLink to="/" className="brand" aria-label="MILE">
+        <img src="/logo-m.png" alt="" width="34" height="32" />
+        <span>MILE</span>
+      </NavLink>
+      <nav className="side-nav" aria-label="MILE">
+        <NavLink to="/" end>
+          <Icon name="calendar" />
+          {t('nav.deadlines')}
+        </NavLink>
+        <NavLink to="/vehicles" end>
+          <Icon name="car" />
+          {t('nav.vehicles')}
+        </NavLink>
+        <NavLink to="/expenses">
+          <Icon name="chart" />
+          {t('nav.expenses')}
+        </NavLink>
+        <NavLink to="/settings">
+          <Icon name="settings" />
+          {t('nav.settings')}
+        </NavLink>
+      </nav>
+      {vehicles.length > 0 && (
+        <div className="side-vehicles">
+          <div className="side-label">{t('nav.vehicles')}</div>
+          {vehicles.map((v) => (
+            <NavLink key={v.id} to={`/vehicles/${v.id}`}>
+              <span>{v.name}</span>
+              {v.plate && <Plate plate={v.plate} small />}
+            </NavLink>
+          ))}
+        </div>
+      )}
+      <button type="button" className="btn btn-cta btn-lg" onClick={() => openAdd()}>
+        <Icon name="plus" />
+        {t('nav.add')}
+      </button>
+    </aside>
+  )
+}
+
+/** Phones: four sections and the "+" button in the middle. */
+function BottomNav() {
+  const { t } = useI18n()
+  const { openAdd } = useAdd()
+  // On a vehicle's page the "+" logs for that vehicle.
+  const vehicleId = Number(useMatch('/vehicles/:id/*')?.params.id) || undefined
+  return (
+    <nav className="bottomnav" aria-label="MILE">
       <NavLink to="/" end>
-        <Icon name="calendar" />
+        <Icon name="calendar" size={24} />
         <span>{t('nav.deadlines')}</span>
       </NavLink>
       <NavLink to="/vehicles">
-        <Icon name="car" />
+        <Icon name="car" size={24} />
         <span>{t('nav.vehicles')}</span>
       </NavLink>
+      <button type="button" className="fab" onClick={() => openAdd(vehicleId)} aria-label={t('nav.add')}>
+        <span className="fab-circle">
+          <Icon name="plus" size={26} />
+        </span>
+      </button>
+      <NavLink to="/expenses">
+        <Icon name="chart" size={24} />
+        <span>{t('nav.expenses')}</span>
+      </NavLink>
       <NavLink to="/settings">
-        <Icon name="settings" />
+        <Icon name="settings" size={24} />
         <span>{t('nav.settings')}</span>
       </NavLink>
-    </>
-  )
-  return (
-    <div className="app">
-      <header className="topbar">
-        <NavLink to="/" className="brand" aria-label="MILE">
-          <img src="/logo-m.png" alt="" width="42" height="40" />
-          <span>MILE</span>
-        </NavLink>
-        <nav className="topnav">{nav}</nav>
-      </header>
-      <main className="content">
-        <Outlet />
-      </main>
-      <nav className="bottomnav">{nav}</nav>
-    </div>
+    </nav>
   )
 }
 

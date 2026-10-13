@@ -51,7 +51,7 @@ export function TyresTab({ vehicle, canEdit, version, changed }: TabProps) {
       <div className="tab-head">
         <span className="muted">{data.sets.length > 0 && !mounted && t('tyres.noneMounted')}</span>
         {canEdit && (
-          <button className="btn btn-primary" onClick={() => setEditing('new')}>
+          <button className="btn" onClick={() => setEditing('new')}>
             <Icon name="plus" size={16} />
             {t('tyres.new')}
           </button>
@@ -75,42 +75,27 @@ export function TyresTab({ vehicle, canEdit, version, changed }: TabProps) {
                 <StatusPill status="suspended" label={t('tyres.stored')} />
               )}
             </div>
-            <dl className="facts">
-              <dt>{t('tyres.season')}</dt>
-              <dd>{t(`tyres.season.${s.season}`)}</dd>
-              {s.dot && (
-                <>
-                  <dt>{t('tyres.dot')}</dt>
-                  <dd>
-                    {s.dot}
-                    {age && <span className="muted"> · {age}</span>}
-                  </dd>
-                </>
-              )}
-              {s.mounted && s.mounted_since && (
-                <>
-                  <dt>{t('tyres.mountedSince')}</dt>
-                  <dd>{date(s.mounted_since, locale)}</dd>
-                </>
-              )}
-              <dt>{t('tyres.km')}</dt>
-              <dd>{num(s.km, locale)} km</dd>
+            <div className="muted" style={{ marginTop: 4 }}>
+              {[t(`tyres.season.${s.season}`), s.dot && `${t('tyres.dot')} ${s.dot}${age ? ` (${age})` : ''}`, !s.mounted && s.storage].filter(Boolean).join(' · ')}
+            </div>
+            <div className="tiles" style={{ marginTop: 12, marginBottom: 0, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+              <div className="tile" style={{ background: 'var(--surface-2)' }}>
+                <span className="tile-label">{t('tyres.km')}</span>
+                <span className="tile-value">{num(s.km, locale)} km</span>
+              </div>
               {rotates && s.km > 0 && (
-                <>
-                  <dt>{t('tyres.kmSinceRotation')}</dt>
-                  <dd>
-                    {num(s.km_since_rotation, locale)} km
-                    {s.last_rotation && <div className="muted small">{t('tyres.lastRotation', { date: date(s.last_rotation, locale) })}</div>}
-                  </dd>
-                </>
+                <div className="tile" style={{ background: 'var(--surface-2)' }}>
+                  <span className="tile-label">{t('tyres.kmSinceRotation')}</span>
+                  <span className="tile-value">{num(s.km_since_rotation, locale)} km</span>
+                </div>
               )}
-              {!s.mounted && s.storage && (
-                <>
-                  <dt>{t('tyres.storage')}</dt>
-                  <dd>{s.storage}</dd>
-                </>
-              )}
-            </dl>
+            </div>
+            {s.mounted && s.mounted_since && (
+              <p className="muted small">
+                {t('tyres.mountedSince')} {date(s.mounted_since, locale)}
+                {s.last_rotation && ` · ${t('tyres.lastRotation', { date: date(s.last_rotation, locale) })}`}
+              </p>
+            )}
             {s.notes && <p className="notes">{s.notes}</p>}
             {canEdit && (
               <div className="row-actions">

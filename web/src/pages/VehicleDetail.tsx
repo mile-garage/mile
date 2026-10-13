@@ -1,22 +1,31 @@
 // Copyright (C) 2026 Gabriele Menghi
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { type Vehicle } from '../api'
-import { PageHead } from '../App'
 import { useI18n } from '../i18n'
 import { num } from '../format'
 import { Icon } from '../components/Icon'
 import { OdometerForm } from '../components/Forms'
 import { ExportDialog, ImportDialog } from '../components/Transfer'
 import { Loading, useLoad } from '../components/ui'
-import { VehicleCover } from './Vehicles'
-import { DeadlinesTab, ExpensesTab, FuelTab, InsuranceTab, PhotosTab, SummaryTab } from './VehicleTabs'
+import { Plate, VehicleCover } from './Vehicles'
+import { DocsTab, LogTab, StatusTab } from './VehicleTabs'
 import { TyresTab } from './Tyres'
 
-const tabs = ['deadlines', 'expenses', 'fuel', 'insurance', 'tyres', 'photos', 'summary'] as const
+const tabs = ['status', 'log', 'tyres', 'docs'] as const
 type Tab = (typeof tabs)[number]
+
+/** The tabs before the redesign, still found in bookmarks and links. */
+const oldTabs: Record<string, Tab> = {
+  deadlines: 'status',
+  summary: 'status',
+  expenses: 'log',
+  fuel: 'log',
+  insurance: 'docs',
+  photos: 'docs',
+}
 
 export function VehicleDetail() {
   const { id } = useParams()
@@ -24,10 +33,19 @@ export function VehicleDetail() {
   const [params, setParams] = useSearchParams()
   const vehicle = useLoad<Vehicle>(`/api/vehicles/${id}`)
   const [kmForm, setKmForm] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [dialog, setDialog] = useState<'export' | 'import' | null>(null)
   // bumped after every change, so that the tabs reload their data
   const [version, setVersion] = useState(0)
-  const tab: Tab = tabs.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'deadlines'
+  const asked = params.get('tab') ?? ''
+  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : (oldTabs[asked] ?? 'status')
+
+  useEffect(() => {
+    if (!menu) return
+    const close = () => setMenu(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [menu])
 
   const v = vehicle.data
   if (!v) return <Loading />
@@ -38,68 +56,84 @@ export function VehicleDetail() {
   }
   const props = { vehicle: v, canEdit, version, changed }
 
-  const back = (
-    <Link className="btn-icon back" to="/vehicles" aria-label={t('common.back')}>
-      <Icon name="back" />
-    </Link>
-  )
-
   return (
     <div className="page">
-      <PageHead title={v.name} back={back}>
-        <button className="btn" onClick={() => setDialog('export')} aria-label={t('transfer.export')}>
-          <Icon name="upload" size={16} />
-          <span className="hide-sm">{t('transfer.export')}</span>
-        </button>
-        {canEdit && (
-          <button className="btn" onClick={() => setDialog('import')} aria-label={t('transfer.import')}>
-            <Icon name="download" size={16} />
-            <span className="hide-sm">{t('transfer.import')}</span>
-          </button>
-        )}
-        {canEdit && (
-          <Link className="btn" to={`/vehicles/${v.id}/edit`}>
-            <Icon name="edit" size={16} />
-            <span className="hide-sm">{t('common.edit')}</span>
-          </Link>
-        )}
-      </PageHead>
-
-      <div className="vehicle-hero card">
+      <div className="vehicle-hero">
         <VehicleCover v={v} className="hero-cover" />
-        <div className="vehicle-hero-info">
-          {v.plate && <div className="plate">{v.plate}</div>}
-          <div className="muted">
-            {[v.make, v.model].filter(Boolean).join(' ')} · {t(`fuel.${v.fuel_type}`)}
-          </div>
-          <div className="vehicle-km">
-            <Icon name="gauge" size={18} />
-            {v.current_km !== null ? t('vehicle.currentKm', { km: num(v.current_km, locale) }) : '—'}
+        <Link className="hero-btn left" to="/vehicles" aria-label={t('common.back')}>
+          <Icon name="back" size={22} />
+        </Link>
+        <button
+          className="hero-btn right"
+          aria-label={t('vehicle.more')}
+          aria-expanded={menu}
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenu(!menu)
+          }}
+        >
+          <Icon name="more" size={22} />
+        </button>
+        {menu && (
+          <div className="menu" role="menu">
             {canEdit && (
-              <button className="btn btn-sm" onClick={() => setKmForm(true)}>
-                {t('vehicle.updateKm')}
+              <Link role="menuitem" to={`/vehicles/${v.id}/edit`}>
+                <Icon name="edit" size={18} />
+                {t('vehicle.edit')}
+              </Link>
+            )}
+            {canEdit && (
+              <button role="menuitem" onClick={() => setDialog('import')}>
+                <Icon name="download" size={18} />
+                {t('transfer.import')}
               </button>
             )}
+            <button role="menuitem" onClick={() => setDialog('export')}>
+              <Icon name="upload" size={18} />
+              {t('transfer.export')}
+            </button>
           </div>
-          {v.archived && <span className="badge">{t('vehicles.archived')}</span>}
-        </div>
+        )}
       </div>
 
-      <nav className="tabs" role="tablist">
-        {tabs.map((x) => (
-          <button key={x} role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setParams({ tab: x }, { replace: true })}>
-            {t(`tab.${x}`)}
-          </button>
-        ))}
-      </nav>
+      <div className="vehicle-sheet">
+        <div className="vehicle-head">
+          <div>
+            <h1>
+              {v.name}
+              {v.archived && <span className="badge">{t('vehicles.archived')}</span>}
+            </h1>
+            <div className="muted">{[[v.make, v.model].filter(Boolean).join(' '), t(`fuel.${v.fuel_type}`)].filter(Boolean).join(' · ')}</div>
+          </div>
+          {v.plate && <Plate plate={v.plate} />}
+        </div>
 
-      {tab === 'deadlines' && <DeadlinesTab {...props} goTo={(x: string) => setParams({ tab: x }, { replace: true })} />}
-      {tab === 'expenses' && <ExpensesTab {...props} />}
-      {tab === 'fuel' && <FuelTab {...props} />}
-      {tab === 'insurance' && <InsuranceTab {...props} />}
-      {tab === 'tyres' && <TyresTab {...props} />}
-      {tab === 'photos' && <PhotosTab {...props} />}
-      {tab === 'summary' && <SummaryTab {...props} />}
+        <div className="card km-card">
+          <Icon name="gauge" size={26} />
+          <div style={{ flex: 1 }}>
+            <div className="km-value">{v.current_km !== null ? `${num(v.current_km, locale)} km` : '—'}</div>
+            <div className="muted small">{t('vehicle.kmNow')}</div>
+          </div>
+          {canEdit && (
+            <button className="btn" onClick={() => setKmForm(true)}>
+              {t('vehicle.updateKm')}
+            </button>
+          )}
+        </div>
+
+        <nav className="segmented tabs" role="tablist">
+          {tabs.map((x) => (
+            <button key={x} role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setParams({ tab: x }, { replace: true })}>
+              {t(x === 'status' ? 'tab.status' : x === 'log' ? 'tab.log' : x === 'tyres' ? 'tab.tyres' : 'tab.docs')}
+            </button>
+          ))}
+        </nav>
+
+        {tab === 'status' && <StatusTab {...props} />}
+        {tab === 'log' && <LogTab {...props} />}
+        {tab === 'tyres' && <TyresTab {...props} />}
+        {tab === 'docs' && <DocsTab {...props} />}
+      </div>
 
       {dialog === 'export' && <ExportDialog url={`/api/vehicles/${v.id}/export`} title={t('export.title')} onClose={() => setDialog(null)} />}
       {dialog === 'import' && (

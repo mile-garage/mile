@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { fileUrl, type Vehicle } from '../api'
 import { PageHead } from '../App'
 import { useI18n } from '../i18n'
-import { num } from '../format'
+import { num, plateText } from '../format'
 import { Icon } from '../components/Icon'
 import { Empty, Loading, useLoad } from '../components/ui'
 
@@ -64,17 +64,32 @@ export function VehicleCover({ v, className = 'cover' }: { v: Vehicle; className
   )
 }
 
+/** Number plate drawn like the Italian ones. */
+export function Plate({ plate, small }: { plate: string; small?: boolean }) {
+  const text = plateText(plate)
+  return (
+    <span className={`plate${small ? ' plate-sm' : ''}`} aria-label={text}>
+      <span>{text}</span>
+    </span>
+  )
+}
+
 function VehicleCard({ v }: { v: Vehicle }) {
   const { t, locale } = useI18n()
   return (
     <Link to={`/vehicles/${v.id}`} className="vehicle-card">
       <VehicleCover v={v} />
       <div className="vehicle-card-body">
-        <div className="vehicle-card-name">{v.name}</div>
-        <div className="muted">
-          {[v.plate, v.current_km !== null ? t('vehicle.currentKm', { km: num(v.current_km, locale) }) : ''].filter(Boolean).join(' · ')}
+        <div className="vehicle-card-top">
+          <span className="vehicle-card-name">{v.name}</span>
+          {v.plate && <Plate plate={v.plate} small />}
         </div>
-        {v.role !== 'owner' && <span className="badge">{t('vehicles.shared')}</span>}
+        <div className="muted">
+          {[[v.make, v.model].filter(Boolean).join(' '), v.current_km !== null ? t('vehicle.currentKm', { km: num(v.current_km, locale) }) : '']
+            .filter(Boolean)
+            .join(' · ')}
+          {v.role !== 'owner' && <span className="badge">{t('vehicles.shared')}</span>}
+        </div>
       </div>
     </Link>
   )

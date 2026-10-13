@@ -2,26 +2,25 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useState } from 'react'
+import { Link } from 'react-router'
 import {
   api,
   fileUrl,
   type Attachment,
   type Deadline,
   type Expense,
-  type ExpenseInput,
   type OdometerReading,
   type Policy,
   type PolicyInput,
   type Refuel,
-  type Reminder,
   type Stats,
   type Vehicle,
 } from '../api'
 import { useI18n } from '../i18n'
 import { addMonths, date, euro, month, num, today, unit } from '../format'
-import { DeadlineRow } from '../components/Deadlines'
+import { DeadlineRow, useDeadlineActions } from '../components/Deadlines'
 import { FileList, UploadButton } from '../components/Files'
-import { DateForm, ExpenseForm, PolicyForm, RefuelForm, ReminderForm } from '../components/Forms'
+import { DateForm, ExpenseForm, PolicyForm, RefuelForm } from '../components/Forms'
 import { Icon } from '../components/Icon'
 import { Empty, Loading, StatusPill, useLoad, useUI } from '../components/ui'
 
@@ -32,302 +31,151 @@ export interface TabProps {
   changed: () => void
 }
 
-// ---- deadlines ----
+// ---- status: deadlines and the numbers that matter ----
 
-type ExpensePreset = Partial<ExpenseInput>
-
-export function DeadlinesTab({ vehicle, canEdit, version, changed, goTo }: TabProps & { goTo: (tab: string) => void }) {
+export function StatusTab({ vehicle, canEdit, version }: TabProps) {
   const { t, locale } = useI18n()
-  const { toast, fail } = useUI()
-  const { data } = useLoad<Deadline[]>(`/api/vehicles/${vehicle.id}/deadlines`, version)
-  const [expense, setExpense] = useState<ExpensePreset | null>(null)
-  const [reminder, setReminder] = useState<Reminder | 'new' | null>(null)
-  if (!data) return <Loading />
+  const deadlines = useLoad<Deadline[]>(`/api/vehicles/${vehicle.id}/deadlines`, version)
+  const stats = useLoad<Stats>(`/api/vehicles/${vehicle.id}/stats`, version)
+  const actions = useDeadlineActions([vehicle])
+  if (!deadlines.data || !stats.data) return <Loading />
+  const u = unit(vehicle.fuel_type)
+  const f = stats.data.fuel
 
-  const km = vehicle.current_km
-  const roadTax = data.find((d) => d.kind === 'road_tax')
-  const presets: Record<string, ExpensePreset> = {
-    inspection: { category: 'inspection', odometer: km },
-    service: { category: 'service', odometer: km },
-    oil_change: { category: 'oil_change', odometer: km },
-    transmission_oil: { category: 'transmission_oil', odometer: km },
-    brake_pads: { category: 'brake_pads', odometer: km },
-    brake_discs: { category: 'brake_discs', odometer: km },
-    // a payment made for the deadline covers the 12 months after the expired one
-    road_tax: { category: 'road_tax', valid_until: roadTax?.due ? addMonths(roadTax.due, 11).slice(0, 7) : null },
+  return (
+    <>
+      {deadlines.data.length === 0 ? (
+        <Empty>{t('deadline.noneVehicle')}</Empty>
+      ) : (
+        <div className="card list">
+          {deadlines.data.map((d) => (
+            <DeadlineRow key={`${d.kind}-${d.ref_id}`} d={d} vehicle={vehicle} full onClick={() => actions.run(d, canEdit)} />
+          ))}
+        </div>
+      )}
+
+      <h2 className="section-title">{t('vehicle.stats')}</h2>
+      <div className="tiles">
+        <div className="tile">
+          <span className="tile-label">{t('fuel.avg')}</span>
+          <span className="tile-value">
+            {f.avg_per_100km !== undefined ? num(f.avg_per_100km, locale, 1) : '—'} <span className="tile-unit">{u}/100 km</span>
+          </span>
+        </div>
+        <div className="tile">
+          <span className="tile-label">{t('summary.costKm')}</span>
+          <span className="tile-value">
+            {stats.data.cents_per_km !== null ? num(stats.data.cents_per_km / 100, locale, 2) : '—'} <span className="tile-unit">€</span>
+          </span>
+        </div>
+        <div className="tile">
+          <span className="tile-label">{t('summary.total')}</span>
+          <span className="tile-value">{euro(stats.data.total, locale)}</span>
+        </div>
+        <div className="tile">
+          <span className="tile-label">{t('fuel.avgPrice')}</span>
+          <span className="tile-value">
+            {f.avg_unit_price !== undefined ? num(f.avg_unit_price, locale, 3) : '—'} <span className="tile-unit">€/{u}</span>
+          </span>
+        </div>
+      </div>
+      {f.refuels > 1 && f.avg_per_100km === undefined && <p className="muted">{t('fuel.needFull')}</p>}
+      <Link className="btn btn-block" to={`/expenses?vehicle=${vehicle.id}`}>
+        <Icon name="chart" size={18} />
+        {t('summary.last12')}
+      </Link>
+      {actions.element}
+    </>
+  )
+}
+
+// ---- log: refuels, expenses and km readings in one list ----
+
+type LogItem =
+  | { kind: 'refuel'; date: string; id: number; cents: number; r: Refuel }
+  | { kind: 'expense'; date: string; id: number; cents: number; e: Expense }
+  | { kind: 'km'; date: string; id: number; cents: number; o: OdometerReading }
+
+type LogFilter = 'all' | 'refuel' | 'expense' | 'km'
+
+export function LogTab({ vehicle, canEdit, version, changed }: TabProps) {
+  const { t, locale } = useI18n()
+  const { confirm, fail } = useUI()
+  const expenses = useLoad<Expense[]>(`/api/vehicles/${vehicle.id}/expenses`, version)
+  const refuels = useLoad<Refuel[]>(`/api/vehicles/${vehicle.id}/refuels`, version)
+  const readings = useLoad<OdometerReading[]>(`/api/vehicles/${vehicle.id}/odometer`, version)
+  const [filter, setFilter] = useState<LogFilter>('all')
+  const [editing, setEditing] = useState<LogItem | null>(null)
+  if (!expenses.data || !refuels.data || !readings.data) return <Loading />
+  const u = unit(vehicle.fuel_type)
+
+  const items: LogItem[] = [
+    ...refuels.data.map((r) => ({ kind: 'refuel' as const, date: r.date, id: r.id, cents: r.total_cents, r })),
+    ...expenses.data.map((e) => ({ kind: 'expense' as const, date: e.date, id: e.id, cents: e.amount_cents, e })),
+    ...readings.data.map((o) => ({ kind: 'km' as const, date: o.date, id: o.id, cents: 0, o })),
+  ]
+    .filter((x) => filter === 'all' || x.kind === filter)
+    .sort((a, b) => (a.date === b.date ? b.id - a.id : a.date < b.date ? 1 : -1))
+
+  const months: { key: string; items: LogItem[] }[] = []
+  for (const x of items) {
+    const key = x.date.slice(0, 7)
+    if (months.at(-1)?.key !== key) months.push({ key, items: [] })
+    months.at(-1)!.items.push(x)
   }
 
-  const open = async (d: Deadline) => {
-    if (d.kind === 'insurance') return goTo('insurance')
-    if (d.kind === 'tyre_change' || d.kind === 'tyre_rotation') return goTo('tyres')
-    if (d.kind === 'reminder') {
-      try {
-        const rs = await api.get<Reminder[]>(`/api/reminders?vehicle=${vehicle.id}`)
-        const r = rs.find((x) => x.id === d.ref_id)
-        if (r && canEdit) setReminder(r)
-      } catch (e) {
-        fail(e)
-      }
+  const open = async (x: LogItem) => {
+    if (!canEdit) return
+    if (x.kind !== 'km') return setEditing(x)
+    if (!(await confirm({ title: t('common.delete'), message: `${num(x.o.km, locale)} km · ${date(x.date, locale)}`, confirmLabel: t('common.delete'), danger: true })))
       return
-    }
-    if (canEdit) setExpense(presets[d.kind])
-  }
-
-  const done = async (d: Deadline) => {
     try {
-      const r = await api.post<Reminder>(`/api/reminders/${d.ref_id}/done`)
-      toast(r.done_at ? t('common.saved') : t('reminder.doneRepeat', { date: date(r.due_date, locale) }))
+      await api.del(`/api/odometer/${x.id}`)
       changed()
     } catch (e) {
       fail(e)
     }
   }
 
-  return (
-    <>
-      {canEdit && (
-        <div className="quick-actions">
-          <button className="btn" onClick={() => setExpense(presets.inspection)}>
-            <Icon name="check" size={16} />
-            {t('quick.inspection')}
-          </button>
-          <button className="btn" onClick={() => setExpense(presets.road_tax)}>
-            <Icon name="check" size={16} />
-            {t('quick.roadTax')}
-          </button>
-          <button className="btn" onClick={() => setExpense(presets.service)}>
-            <Icon name="check" size={16} />
-            {t('quick.service')}
-          </button>
-          <button className="btn" onClick={() => setExpense(presets.oil_change)}>
-            <Icon name="check" size={16} />
-            {t('quick.oilChange')}
-          </button>
-          {(vehicle.transmission_oil_interval_km || vehicle.transmission_oil_interval_months) && (
-            <button className="btn" onClick={() => setExpense(presets.transmission_oil)}>
-              <Icon name="check" size={16} />
-              {t('quick.transmissionOil')}
-            </button>
-          )}
-          {vehicle.brake_pads_interval_km && (
-            <button className="btn" onClick={() => setExpense(presets.brake_pads)}>
-              <Icon name="check" size={16} />
-              {t('quick.brakePads')}
-            </button>
-          )}
-          {vehicle.brake_discs_interval_km && (
-            <button className="btn" onClick={() => setExpense(presets.brake_discs)}>
-              <Icon name="check" size={16} />
-              {t('quick.brakeDiscs')}
-            </button>
-          )}
-          <button className="btn" onClick={() => setReminder('new')}>
-            <Icon name="bell" size={16} />
-            {t('deadline.addReminder')}
-          </button>
-        </div>
-      )}
-      {data.length === 0 ? (
-        <Empty>{t('deadline.noneVehicle')}</Empty>
-      ) : (
-        <div className="card list">
-          {data.map((d) => (
-            <DeadlineRow
-              key={`${d.kind}-${d.ref_id}`}
-              d={d}
-              onClick={() => open(d)}
-              actions={
-                d.kind === 'reminder' &&
-                canEdit && (
-                  <button className="btn btn-sm" onClick={() => done(d)}>
-                    <Icon name="check" size={14} />
-                    {t('deadline.done')}
-                  </button>
-                )
-              }
-            />
-          ))}
-        </div>
-      )}
-      {expense && (
-        <ExpenseForm
-          vehicle={vehicle}
-          preset={expense}
-          onClose={() => setExpense(null)}
-          onSaved={() => {
-            setExpense(null)
-            changed()
-          }}
-        />
-      )}
-      {reminder && (
-        <ReminderForm
-          vehicles={[vehicle]}
-          vehicleId={vehicle.id}
-          reminder={reminder === 'new' ? undefined : reminder}
-          onClose={() => setReminder(null)}
-          onSaved={() => {
-            setReminder(null)
-            changed()
-          }}
-        />
-      )}
-    </>
-  )
-}
-
-// ---- expenses ----
-
-export function ExpensesTab({ vehicle, canEdit, version, changed }: TabProps) {
-  const { t, locale } = useI18n()
-  const { data } = useLoad<Expense[]>(`/api/vehicles/${vehicle.id}/expenses`, version)
-  const [editing, setEditing] = useState<Expense | 'new' | null>(null)
-  if (!data) return <Loading />
-  const total = data.reduce((s, e) => s + e.amount_cents, 0)
+  const filters: { key: LogFilter; label: string }[] = [
+    { key: 'all', label: t('log.all') },
+    { key: 'refuel', label: t('cat.fuel') },
+    { key: 'expense', label: t('tab.expenses') },
+    { key: 'km', label: t('common.km') },
+  ]
 
   return (
     <>
       <div className="tab-head">
-        <span className="muted">
-          {data.length > 0 && (
-            <>
-              {t('common.total')}: <strong>{euro(total, locale)}</strong>
-            </>
-          )}
-        </span>
-        {canEdit && (
-          <button className="btn btn-primary" onClick={() => setEditing('new')}>
-            <Icon name="plus" size={16} />
-            {t('expense.new')}
-          </button>
-        )}
-      </div>
-      {data.length === 0 ? (
-        <Empty>{t('expense.empty')}</Empty>
-      ) : (
-        <div className="card list">
-          {data.map((e) => (
-            <div key={e.id} className={`row${canEdit ? ' clickable' : ''}`} onClick={() => canEdit && setEditing(e)}>
-              <div className="row-main">
-                <div className="row-title">
-                  {t(`cat.${e.category}`)}
-                  {e.description && <span className="muted"> · {e.description}</span>}
-                </div>
-                <div className="row-sub">
-                  {date(e.date, locale)}
-                  {e.odometer !== null && ` · ${num(e.odometer, locale)} km`}
-                  {e.vendor && ` · ${e.vendor}`}
-                  {e.valid_until && ` · → ${month(e.valid_until, locale)}`}
-                </div>
-                {!canEdit && <FileList files={e.attachments} canEdit={false} onDeleted={() => {}} />}
-              </div>
-              <div className="row-side">
-                <strong>{euro(e.amount_cents, locale)}</strong>
-                {e.attachments.length > 0 && (
-                  <span className="muted small">
-                    <Icon name="paperclip" size={14} /> {e.attachments.length}
-                  </span>
-                )}
-              </div>
-            </div>
+        <div className="chips scroll-x" role="group" aria-label={t('tab.log')}>
+          {filters.map((f) => (
+            <button key={f.key} className="chip" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+              {f.label}
+            </button>
           ))}
         </div>
-      )}
-      {editing && (
-        <ExpenseForm
-          vehicle={vehicle}
-          expense={editing === 'new' ? undefined : editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null)
-            changed()
-          }}
-        />
-      )}
-    </>
-  )
-}
-
-// ---- fuel ----
-
-export function FuelTab({ vehicle, canEdit, version, changed }: TabProps) {
-  const { t, locale } = useI18n()
-  const refuels = useLoad<Refuel[]>(`/api/vehicles/${vehicle.id}/refuels`, version)
-  const stats = useLoad<Stats>(`/api/vehicles/${vehicle.id}/stats`, version)
-  const [editing, setEditing] = useState<Refuel | 'new' | null>(null)
-  if (!refuels.data || !stats.data) return <Loading />
-  const u = unit(vehicle.fuel_type)
-  const f = stats.data.fuel
-
-  const consumption = (per100?: number) => {
-    if (per100 === undefined) return '—'
-    const s = `${num(per100, locale, 1)} ${u}/100 km`
-    return u === 'l' ? `${s} · ${num(100 / per100, locale, 1)} km/l` : s
-  }
-
-  return (
-    <>
-      <div className="tiles">
-        <div className="tile">
-          <span className="tile-label">{t('fuel.avg')}</span>
-          <span className="tile-value">{consumption(f.avg_per_100km)}</span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{t('fuel.last')}</span>
-          <span className="tile-value">{consumption(f.last_per_100km)}</span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{t('fuel.costKm')}</span>
-          <span className="tile-value">{f.cents_per_km !== undefined ? `${num(f.cents_per_km / 100, locale, 3)} €` : '—'}</span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{t('fuel.avgPrice')}</span>
-          <span className="tile-value">{f.avg_unit_price !== undefined ? `${num(f.avg_unit_price, locale, 3)} €/${u}` : '—'}</span>
-        </div>
       </div>
-      {f.refuels > 1 && f.avg_per_100km === undefined && <p className="muted">{t('fuel.needFull')}</p>}
-
-      <div className="tab-head">
-        <span />
-        {canEdit && (
-          <button className="btn btn-primary" onClick={() => setEditing('new')}>
-            <Icon name="fuel" size={16} />
-            {t('refuel.new')}
-          </button>
-        )}
-      </div>
-      {refuels.data.length === 0 ? (
-        <Empty>{t('refuel.empty')}</Empty>
-      ) : (
-        <div className="card list">
-          {refuels.data.map((r) => (
-            <div key={r.id} className={`row${canEdit ? ' clickable' : ''}`} onClick={() => canEdit && setEditing(r)}>
-              <div className="row-main">
-                <div className="row-title">
-                  {num(r.quantity, locale, 2)} {u}
-                  {r.unit_price !== null && <span className="muted"> · {num(r.unit_price, locale, 3)} €/{u}</span>}
-                  {!r.full_tank && <span className="badge">{t('refuel.partial')}</span>}
-                </div>
-                <div className="row-sub">
-                  {date(r.date, locale)} · {num(r.odometer, locale)} km{r.station && ` · ${r.station}`}
-                </div>
-              </div>
-              <div className="row-side">
-                <strong>{euro(r.total_cents, locale)}</strong>
-                {r.attachments.length > 0 && (
-                  <span className="muted small">
-                    <Icon name="paperclip" size={14} /> {r.attachments.length}
-                  </span>
-                )}
-              </div>
+      {months.length === 0 && <Empty>{t('log.empty')}</Empty>}
+      {months.map((m) => {
+        const total = m.items.reduce((s, x) => s + x.cents, 0)
+        return (
+          <section key={m.key}>
+            <h2 className="section-title" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>{month(m.key, locale)}</span>
+              {total > 0 && <span className="num">{euro(total, locale)}</span>}
+            </h2>
+            <div className="card list">
+              {m.items.map((x) => (
+                <LogRow key={`${x.kind}-${x.id}`} x={x} unit={u} canEdit={canEdit} onClick={() => open(x)} />
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-      {editing && (
+          </section>
+        )
+      })}
+      {editing?.kind === 'refuel' && (
         <RefuelForm
           vehicle={vehicle}
-          refuel={editing === 'new' ? undefined : editing}
+          refuel={editing.r}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
@@ -335,6 +183,75 @@ export function FuelTab({ vehicle, canEdit, version, changed }: TabProps) {
           }}
         />
       )}
+      {editing?.kind === 'expense' && (
+        <ExpenseForm
+          vehicle={vehicle}
+          expense={editing.e}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            changed()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+function LogRow({ x, unit: u, canEdit, onClick }: { x: LogItem; unit: string; canEdit: boolean; onClick: () => void }) {
+  const { t, locale } = useI18n()
+  let icon = 'gauge'
+  let title = ''
+  const sub: string[] = [date(x.date, locale)]
+  let files: Attachment[] = []
+  if (x.kind === 'refuel') {
+    icon = 'fuel'
+    title = t('add.refuel')
+    sub.push(`${num(x.r.quantity, locale, 2)} ${u}`, `${num(x.r.odometer, locale)} km`)
+    if (!x.r.full_tank) sub.push(t('refuel.partial'))
+    files = x.r.attachments
+  } else if (x.kind === 'expense') {
+    icon = ['road_tax', 'tolls', 'parking', 'fine', 'wash', 'accessories', 'other'].includes(x.e.category) ? 'receipt' : 'wrench'
+    title = t(`cat.${x.e.category}`) + (x.e.description ? ` · ${x.e.description}` : '')
+    if (x.e.odometer !== null) sub.push(`${num(x.e.odometer, locale)} km`)
+    if (x.e.vendor) sub.push(x.e.vendor)
+    if (x.e.valid_until) sub.push(`→ ${month(x.e.valid_until, locale)}`)
+    files = x.e.attachments
+  } else {
+    title = `${num(x.o.km, locale)} km`
+  }
+  return (
+    <div className={`row${canEdit ? ' clickable' : ''}`} onClick={onClick}>
+      <span className="row-icon">
+        <Icon name={icon} />
+      </span>
+      <div className="row-main">
+        <div className="row-title">{title}</div>
+        <div className="row-sub">{sub.join(' · ')}</div>
+        {!canEdit && <FileList files={files} canEdit={false} onDeleted={() => {}} />}
+      </div>
+      <div className="row-side">
+        {x.cents > 0 && <span className="row-amount">{euro(x.cents, locale)}</span>}
+        {files.length > 0 && (
+          <span className="muted small">
+            <Icon name="paperclip" size={14} /> {files.length}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---- documents: insurance and photos ----
+
+export function DocsTab(props: TabProps) {
+  const { t } = useI18n()
+  return (
+    <>
+      <h2 className="section-title">{t('tab.insurance')}</h2>
+      <InsuranceTab {...props} />
+      <h2 className="section-title">{t('tab.photos')}</h2>
+      <PhotosTab {...props} />
     </>
   )
 }
@@ -377,7 +294,7 @@ export function InsuranceTab({ vehicle, canEdit, version, changed }: TabProps) {
       <div className="tab-head">
         <span />
         {canEdit && (
-          <button className="btn btn-primary" onClick={() => setEditing({})}>
+          <button className="btn" onClick={() => setEditing({})}>
             <Icon name="plus" size={16} />
             {t('policy.new')}
           </button>
@@ -539,7 +456,7 @@ export function PhotosTab({ vehicle, canEdit, version, changed }: TabProps) {
             target={{ vehicleId: vehicle.id, kind: 'photo' }}
             multiple
             label={t('photos.add')}
-            className="btn btn-primary"
+            className="btn"
             onUploaded={(a) => {
               setData((d) => [a, ...(d ?? [])])
               if (vehicle.cover_id === null) setCover(a.id)
@@ -574,134 +491,6 @@ export function PhotosTab({ vehicle, canEdit, version, changed }: TabProps) {
           ))}
         </div>
       )}
-    </>
-  )
-}
-
-// ---- summary ----
-
-const series = ['fuel', 'expenses', 'insurance'] as const
-
-export function SummaryTab({ vehicle, canEdit, version, changed }: TabProps) {
-  const { t, locale } = useI18n()
-  const { confirm, fail } = useUI()
-  const stats = useLoad<Stats>(`/api/vehicles/${vehicle.id}/stats`, version)
-  const readings = useLoad<OdometerReading[]>(`/api/vehicles/${vehicle.id}/odometer`, version)
-  if (!stats.data || !readings.data) return <Loading />
-  const s = stats.data
-  const cats = Object.entries(s.by_category).sort((a, b) => b[1] - a[1])
-  const maxCat = Math.max(1, ...cats.map((c) => c[1]))
-  const monthTotal = (m: (typeof s.last_12_months)[number]) => m.fuel + m.expenses + m.insurance
-  const maxMonth = Math.max(1, ...s.last_12_months.map(monthTotal))
-  const seriesLabel = { fuel: t('cat.fuel'), expenses: t('tab.expenses'), insurance: t('cat.insurance') }
-
-  const delReading = async (r: OdometerReading) => {
-    if (!(await confirm({ title: t('common.delete'), message: `${num(r.km, locale)} km · ${date(r.date, locale)}`, confirmLabel: t('common.delete'), danger: true })))
-      return
-    try {
-      await api.del(`/api/odometer/${r.id}`)
-      changed()
-    } catch (e) {
-      fail(e)
-    }
-  }
-
-  return (
-    <>
-      <div className="tiles">
-        <div className="tile">
-          <span className="tile-label">{t('summary.total')}</span>
-          <span className="tile-value">{euro(s.total, locale)}</span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{t('summary.costKm')}</span>
-          <span className="tile-value">{s.cents_per_km !== null ? `${num(s.cents_per_km / 100, locale, 2)} €` : '—'}</span>
-        </div>
-        <div className="tile">
-          <span className="tile-label">{t('summary.kmDriven')}</span>
-          <span className="tile-value">{s.km !== null ? `${num(s.km, locale)} km` : '—'}</span>
-        </div>
-      </div>
-
-      <section className="card chart-card">
-        <h3>{t('summary.last12')}</h3>
-        <div className="legend">
-          {series.map((k) => (
-            <span key={k}>
-              <i className={`swatch s-${k}`} />
-              {seriesLabel[k]}
-            </span>
-          ))}
-        </div>
-        <div className="month-chart" role="img" aria-label={t('summary.last12')}>
-          {s.last_12_months.map((m) => {
-            const tot = monthTotal(m)
-            const tip = `${month(m.month, locale)}: ${euro(tot, locale)}\n` + series.map((k) => `${seriesLabel[k]}: ${euro(m[k], locale)}`).join('\n')
-            return (
-              <div key={m.month} className="month-col" title={tip}>
-                <div className="month-bar" style={{ height: `${(tot / maxMonth) * 100}%` }}>
-                  {series.map((k) => m[k] > 0 && <div key={k} className={`seg s-${k}`} style={{ flexGrow: m[k] }} />)}
-                </div>
-                <span className="month-label">{month(m.month, locale, true)}</span>
-              </div>
-            )
-          })}
-        </div>
-        <div className="sr-only">
-          <table>
-          <tbody>
-            {s.last_12_months.map((m) => (
-              <tr key={m.month}>
-                <th>{month(m.month, locale)}</th>
-                {series.map((k) => (
-                  <td key={k}>
-                    {seriesLabel[k]} {euro(m[k], locale)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </section>
-
-      {cats.length > 0 && (
-        <section className="card chart-card">
-          <h3>{t('summary.byCategory')}</h3>
-          <div className="hbars">
-            {cats.map(([c, v]) => (
-              <div key={c} className="hbar-row">
-                <span className="hbar-label">{t(`cat.${c}` as 'cat.other')}</span>
-                <span className="hbar-track">
-                  <span className="hbar" style={{ width: `${(v / maxCat) * 100}%` }} />
-                </span>
-                <span className="hbar-value">{euro(v, locale)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="card chart-card">
-        <h3>{t('summary.odometer')}</h3>
-        {readings.data.length === 0 ? (
-          <p className="muted">{t('summary.odometerEmpty')}</p>
-        ) : (
-          <ul className="readings">
-            {readings.data.map((r) => (
-              <li key={r.id}>
-                <span>{date(r.date, locale)}</span>
-                <strong>{num(r.km, locale)} km</strong>
-                {canEdit && (
-                  <button className="btn-icon" onClick={() => delReading(r)} aria-label={t('common.delete')}>
-                    <Icon name="trash" size={14} />
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </>
   )
 }
