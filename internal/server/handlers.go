@@ -488,7 +488,8 @@ func (s *Server) getAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", a.ContentType)
 	w.Header().Set("Content-Disposition", mime.FormatMediaType(disp, map[string]string{"filename": a.FileName}))
-	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	// not kept by the browser: documents must not stay on a shared computer after logging out
+	w.Header().Set("Cache-Control", "private, no-store")
 	// PDFs are shown by the browser's viewer: no scripts, no embedding elsewhere.
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")

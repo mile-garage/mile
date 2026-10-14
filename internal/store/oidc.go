@@ -43,12 +43,8 @@ func (s *Store) CreateOIDCUser(id OIDCIdentity, username, displayName string, ad
 	if !usernameRe.MatchString(username) {
 		return nil, invalid("username_invalid", "Username: 2-64 characters, letters, digits and . _ @ -")
 	}
-	n, err := s.CountUsers()
-	if err != nil {
-		return nil, err
-	}
-	in := UserInput{Username: username, DisplayName: Clean(displayName), IsAdmin: admin || n == 0}
-	u, err := s.insertUser(in, "", &id)
+	in := UserInput{Username: username, DisplayName: Clean(displayName), IsAdmin: admin}
+	u, err := s.insertUser(in, "", &id, adminWhenFirst)
 	if ve := (*ValidationError)(nil); errors.As(err, &ve) && ve.Code == "username_taken" {
 		return nil, invalid("sso_username_taken", "A user named "+username+" already exists: log in with the password and link the account in Settings")
 	}

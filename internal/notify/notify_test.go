@@ -224,3 +224,38 @@ func TestRunnerSendsOnce(t *testing.T) {
 		t.Fatalf("sent: %+v", ch.sent)
 	}
 }
+
+// A server chosen by the user cannot bounce the request elsewhere, and only
+// ntfy's own error message is passed back.
+func TestNtfyNoRedirectNoBody(t *testing.T) {
+	hit := false
+	inner := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hit = true }))
+	defer inner.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch strings.Trim(r.URL.Path, "/") {
+		case "page":
+			w.WriteHeader(500)
+			w.Write([]byte("<html>internal admin page</html>"))
+		case "ntfy":
+			w.WriteHeader(403)
+			w.Write([]byte(`{"code":40301,"http":403,"error":"forbidden"}`))
+		default:
+			http.Redirect(w, r, inner.URL, http.StatusTemporaryRedirect)
+		}
+	}))
+	defer srv.Close()
+	n := &Ntfy{}
+	send := func(q string) error {
+		s := store.NotificationSettings{NtfyEnabled: true, NtfyURL: srv.URL + q, NtfyTopic: "t"}
+		return n.Send(context.Background(), s, Message{Title: "x", Lines: []string{"y"}})
+	}
+	if err := send(""); err == nil || hit {
+		t.Fatalf("redirect followed: err=%v hit=%v", err, hit)
+	}
+	if err := send("/page"); err == nil || strings.Contains(err.Error(), "admin") {
+		t.Fatalf("body passed back: %v", err)
+	}
+	if err := send("/ntfy"); err == nil || !strings.Contains(err.Error(), "forbidden") {
+		t.Fatalf("ntfy error lost: %v", err)
+	}
+}

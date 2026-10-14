@@ -72,6 +72,10 @@ type UserInput struct {
 }
 
 func (s *Store) CreateUser(in UserInput) (*User, error) {
+	return s.createUser(in, anyUser)
+}
+
+func (s *Store) createUser(in UserInput, first firstUser) (*User, error) {
 	in.Username = Clean(in.Username)
 	in.DisplayName = Clean(in.DisplayName)
 	if !usernameRe.MatchString(in.Username) {
@@ -84,23 +88,38 @@ func (s *Store) CreateUser(in UserInput) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.insertUser(in, hash, nil)
+	return s.insertUser(in, hash, nil, first)
 }
 
+// How insertUser treats an installation with no users yet. The check and the
+// insert are one statement, so two concurrent requests cannot both pass it.
+type firstUser int
+
+const (
+	anyUser        firstUser = iota
+	onlyFirst                // insert only while there are no users (setup)
+	adminWhenFirst           // the first user becomes an administrator (SSO)
+)
+
 // insertUser stores a validated user; id links it to an OpenID Connect identity.
-func (s *Store) insertUser(in UserInput, hash string, oidc *OIDCIdentity) (*User, error) {
+func (s *Store) insertUser(in UserInput, hash string, oidc *OIDCIdentity, first firstUser) (*User, error) {
 	var issuer, subject any
 	if oidc != nil {
 		issuer, subject = oidc.Issuer, oidc.Subject
 	}
 	t := now()
 	res, err := s.DB.Exec(`INSERT INTO users (username, display_name, password_hash, is_admin, locale, ical_token, oidc_issuer, oidc_subject, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, in.Username, in.DisplayName, hash, boolInt(in.IsAdmin), in.Locale, randomToken(24), issuer, subject, t, t)
+		SELECT ?, ?, ?, CASE WHEN ? = 2 AND NOT EXISTS (SELECT 1 FROM users) THEN 1 ELSE ? END, ?, ?, ?, ?, ?, ?
+		WHERE ? <> 1 OR NOT EXISTS (SELECT 1 FROM users)`,
+		in.Username, in.DisplayName, hash, int(first), boolInt(in.IsAdmin), in.Locale, randomToken(24), issuer, subject, t, t, int(first))
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return nil, invalid("username_taken", "This username is already taken")
 		}
 		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, ErrForbidden // onlyFirst, and someone was faster
 	}
 	id, _ := res.LastInsertId()
 	return s.GetUser(id)
@@ -108,15 +127,8 @@ func (s *Store) insertUser(in UserInput, hash string, oidc *OIDCIdentity) (*User
 
 // CreateFirstUser creates the administrator, only while there are no users.
 func (s *Store) CreateFirstUser(in UserInput) (*User, error) {
-	n, err := s.CountUsers()
-	if err != nil {
-		return nil, err
-	}
-	if n > 0 {
-		return nil, ErrForbidden
-	}
 	in.IsAdmin = true
-	return s.CreateUser(in)
+	return s.createUser(in, onlyFirst)
 }
 
 func (s *Store) GetUser(id int64) (*User, error) {

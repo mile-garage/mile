@@ -206,14 +206,24 @@ func (n *Ntfy) Send(ctx context.Context, s store.NotificationSettings, m Message
 	if cl == nil {
 		cl = &http.Client{Timeout: 20 * time.Second}
 	}
-	res, err := cl.Do(req)
+	// The address is chosen by the user: no redirects to somewhere else, and
+	// only ntfy's own error message goes back, never another server's page.
+	noRedirect := *cl
+	noRedirect.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	res, err := noRedirect.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
-		msg, _ := io.ReadAll(io.LimitReader(res.Body, 300))
-		return fmt.Errorf("ntfy: status %d: %s", res.StatusCode, strings.TrimSpace(string(msg)))
+		var e struct {
+			Error string `json:"error"`
+		}
+		json.NewDecoder(io.LimitReader(res.Body, 4096)).Decode(&e)
+		if e.Error == "" || len(e.Error) > 200 {
+			return fmt.Errorf("ntfy: status %d", res.StatusCode)
+		}
+		return fmt.Errorf("ntfy: status %d: %s", res.StatusCode, e.Error)
 	}
 	return nil
 }

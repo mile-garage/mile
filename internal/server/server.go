@@ -6,6 +6,8 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -13,6 +15,7 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +34,14 @@ type Server struct {
 	static    fs.FS
 	maxUpload int64
 	oidc      *oidcAuth // nil when the login with OpenID Connect is off
+	https     bool      // MILE_BASE_URL starts with https://
+	logins    *loginLimiter
+}
+
+// SetBaseURL tells the server its public address: with https:// the cookies
+// are always Secure, even behind a proxy that does not set X-Forwarded-Proto.
+func (s *Server) SetBaseURL(u string) {
+	s.https = strings.HasPrefix(strings.ToLower(u), "https://")
 }
 
 // SetNotifier enables the notification settings and the test button.
@@ -45,7 +56,7 @@ func init() {
 }
 
 func New(version string, s *store.Store, static fs.FS, maxUploadMB int) *Server {
-	return &Server{version: version, store: s, static: static, maxUpload: int64(maxUploadMB) << 20}
+	return &Server{version: version, store: s, static: static, maxUpload: int64(maxUploadMB) << 20, logins: newLoginLimiter()}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -230,14 +241,14 @@ func (s *Server) allowed(w http.ResponseWriter, r *http.Request, vehicleID int64
 	return true
 }
 
-func secure(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+func (s *Server) secure(r *http.Request) bool {
+	return s.https || r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 func (s *Server) setCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name: cookieName, Value: token, Path: "/", MaxAge: 365 * 24 * 3600,
-		HttpOnly: true, Secure: secure(r), SameSite: http.SameSiteLaxMode,
+		HttpOnly: true, Secure: s.secure(r), SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -292,8 +303,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &in) {
 		return
 	}
-	u, err := s.store.Authenticate(in.Username, in.Password)
+	if !s.logins.allow(in.Username) {
+		w.Header().Set("Retry-After", strconv.Itoa(int(loginWindow.Seconds())))
+		writeError(w, http.StatusTooManyRequests, "too_many_attempts", "Too many attempts: try again in a minute")
+		return
+	}
+	u, err := s.logins.check(func() (*store.User, error) { return s.store.Authenticate(in.Username, in.Password) })
 	if errors.Is(err, store.ErrNotFound) {
+		s.logins.failed(in.Username)
 		time.Sleep(500 * time.Millisecond)
 		writeError(w, http.StatusUnauthorized, "wrong_credentials", "Wrong username or password")
 		return
@@ -302,13 +319,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, err)
 		return
 	}
+	s.logins.reset(in.Username)
 	s.startSession(w, r, u)
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	s.store.DeleteSession(current(r).token)
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, Secure: secure(r), SameSite: http.SameSiteLaxMode})
+		HttpOnly: true, Secure: s.secure(r), SameSite: http.SameSiteLaxMode})
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
@@ -338,8 +356,24 @@ func (s *Server) spa() http.Handler {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Content-Security-Policy", pageCSP(idx))
 		w.Write(idx)
 	})
+}
+
+var inlineScript = regexp.MustCompile(`(?s)<script>(.*?)</script>`)
+
+// pageCSP allows the app's own files and, by hash, the inline script of
+// index.html that sets the theme before the first paint. Styles may be inline
+// (React sets style attributes); nothing is loaded from other sites.
+func pageCSP(html []byte) string {
+	scripts := "'self'"
+	for _, m := range inlineScript.FindAllSubmatch(html, -1) {
+		sum := sha256.Sum256(m[1])
+		scripts += " 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'"
+	}
+	return "default-src 'self'; script-src " + scripts + "; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+		"object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 }
 
 func securityHeaders(next http.Handler) http.Handler {

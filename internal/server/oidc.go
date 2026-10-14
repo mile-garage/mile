@@ -120,7 +120,7 @@ func (s *Server) oidcStart(w http.ResponseWriter, r *http.Request, linkUser int6
 	state, nonce, verifier := rand.Text(), rand.Text(), oauth2.GenerateVerifier()
 	http.SetCookie(w, &http.Cookie{
 		Name: oidcCookie, Value: strings.Join([]string{state, nonce, verifier, strconv.FormatInt(linkUser, 10)}, "|"),
-		Path: "/auth/oidc", MaxAge: 600, HttpOnly: true, Secure: secure(r), SameSite: http.SameSiteLaxMode,
+		Path: "/auth/oidc", MaxAge: 600, HttpOnly: true, Secure: s.secure(r), SameSite: http.SameSiteLaxMode,
 	})
 	return s.oidc.oauth.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), nil
 }
@@ -170,7 +170,7 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	c, err := r.Cookie(oidcCookie)
 	http.SetCookie(w, &http.Cookie{Name: oidcCookie, Value: "", Path: "/auth/oidc", MaxAge: -1,
-		HttpOnly: true, Secure: secure(r), SameSite: http.SameSiteLaxMode})
+		HttpOnly: true, Secure: s.secure(r), SameSite: http.SameSiteLaxMode})
 	if err != nil {
 		ssoFail(w, r, "/", "sso_expired")
 		return

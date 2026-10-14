@@ -81,6 +81,7 @@ func serve(cfg config.Config) error {
 		Channels: []notify.Channel{&notify.Email{Config: smtp}, &notify.Ntfy{}}}
 	app := server.New(version, st, web.Dist(), cfg.MaxUploadMB)
 	app.SetNotifier(notifier, smtp.Configured())
+	app.SetBaseURL(cfg.BaseURL)
 	if cfg.OIDCIssuer != "" {
 		if cfg.BaseURL == "" || cfg.OIDCClientID == "" {
 			return errors.New("MILE_OIDC_ISSUER also needs MILE_OIDC_CLIENT_ID and MILE_BASE_URL")

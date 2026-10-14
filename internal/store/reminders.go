@@ -142,8 +142,11 @@ func (s *Store) UpdateReminder(userID, id int64, in ReminderInput) (*Reminder, e
 	if err := s.checkReminderVehicle(userID, in); err != nil {
 		return nil, err
 	}
-	if _, err := s.DB.Exec(`UPDATE reminders SET vehicle_id = ?, title = ?, due_date = ?, repeat_months = ?, notes = ?, updated_at = ?
-		WHERE id = ?`, in.VehicleID, in.Title, in.DueDate, in.RepeatMonths, in.Notes, now(), id); err != nil {
+	// A personal reminder belongs to whoever makes it personal: an editor of a
+	// shared vehicle must not drop one among another user's own reminders.
+	if _, err := s.DB.Exec(`UPDATE reminders SET vehicle_id = ?, title = ?, due_date = ?, repeat_months = ?, notes = ?, updated_at = ?,
+		user_id = CASE WHEN ? IS NULL THEN ? ELSE user_id END
+		WHERE id = ?`, in.VehicleID, in.Title, in.DueDate, in.RepeatMonths, in.Notes, now(), in.VehicleID, userID, id); err != nil {
 		return nil, err
 	}
 	r, _, err := s.GetReminder(userID, id)
