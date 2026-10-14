@@ -67,7 +67,7 @@ Open `http://<server>:8080`: the first account you create is the administrator. 
 - **Storage**: a host path dataset (e.g. `/mnt/tank/apps/mile`) mounted on `/data`
 - **User**: run the container as the dataset's owner (usually `568:568`, the `apps` user), or give that user write access to the dataset
 
-Back up the dataset with periodic snapshots: it contains the database, its daily copies and all the attachments. MILE keeps these files readable by its own user only (`0600`): to copy a backup through an SMB share, do it as that user.
+Back up the dataset with periodic snapshots: it contains the database, its daily copies and all the attachments. MILE creates these files readable by its own user only (`0600`), but on a dataset with ACLs, such as one made with the *Apps* preset, the ACL inherited from the dataset decides instead (for example `apps` plus the `root` group). To copy a backup through an SMB share, do it as a user the dataset allows.
 
 ### Upgrading
 
@@ -77,9 +77,9 @@ Take a snapshot or a copy of `/data` first: a new version may update the databas
 docker compose pull && docker compose up -d
 ```
 
-On **TrueNAS SCALE** with the `latest` tag, pull the image the app uses, in **System › Shell**: `sudo docker pull ghcr.io/mile-garage/mile:latest`, or `sudo docker pull gabrielemenghi/mile:latest` if you installed it from Docker Hub (the two registries are separate). Then open the app, choose **Edit** and **Save** without changes: this recreates the container, while Stop and Start keep the old image. With a fixed tag, just change it with **Edit**. Check with `sudo docker exec mile /mile version`, or in **Settings › About**, then reload the page twice in the browser. Read the [release notes](https://github.com/mile-garage/mile/releases) before upgrading.
+On **TrueNAS SCALE** with the `latest` tag, pull the image the app uses, in **System › Shell**: `sudo docker pull ghcr.io/mile-garage/mile:latest`, or `sudo docker pull gabrielemenghi/mile:latest` if you installed it from Docker Hub (the two registries are separate). Then open the app, choose **Edit** and **Save** without changes: this recreates the container, while Stop and Start keep the old image. With a fixed tag, just change it with **Edit**. Check in **Settings › About**, or with `sudo docker exec ix-<app name>-mile-1 /mile version` (TrueNAS names the container after the app: `ix-mile-mile-1` for an app called `mile`), then reload the page twice in the browser. Read the [release notes](https://github.com/mile-garage/mile/releases) before upgrading.
 
-**From 0.4 to 0.5**: `MILE_OIDC_AUTO_REGISTER` is now `false` by default (see below), and the files in `/data` become readable by MILE's user only.
+**From 0.4 to 0.5**: `MILE_OIDC_AUTO_REGISTER` is now `false` by default (see below), and the files in `/data` become readable by MILE's user only (unless the dataset's ACL says otherwise).
 
 ### Behind a reverse proxy
 

@@ -9,7 +9,7 @@ body:
     id: version
     attributes:
       label: MILE version
-      description: In Settings › About, or with `docker exec mile /mile version`.
+      description: In Settings › About, or with `docker exec <container> /mile version` (on TrueNAS the container is `ix-<app name>-mile-1`).
       placeholder: "0.5.1"
     validations:
       required: true
