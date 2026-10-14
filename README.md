@@ -57,11 +57,11 @@ Open `http://<server>:8080`: the first account you create is the administrator. 
 - **Storage**: a host path dataset (e.g. `/mnt/tank/apps/mile`) mounted on `/data`
 - **User**: run the container as the dataset's owner (usually `568:568`, the `apps` user), or give that user write access to the dataset
 
-Back up the dataset with periodic snapshots: it contains the database, its daily copies and all the attachments.
+Back up the dataset with periodic snapshots: it contains the database, its daily copies and all the attachments. MILE keeps these files readable by its own user only (`0600`): to copy a backup through an SMB share, do it as that user.
 
 ### Behind a reverse proxy
 
-MILE works behind Caddy, Traefik or Nginx Proxy Manager. Serve it over **HTTPS** if it is reachable from outside your network: the session cookie is marked `Secure` when the proxy sends `X-Forwarded-Proto: https`.
+MILE works behind Caddy, Traefik or Nginx Proxy Manager. Serve it over **HTTPS** if it is reachable from outside your network, and set `MILE_BASE_URL` to the `https://` address: the session cookie is then always marked `Secure` (otherwise only when the proxy sends `X-Forwarded-Proto: https`). After 5 wrong passwords in a minute, logins with that username are refused for a minute.
 
 ## Configuration
 
@@ -77,7 +77,7 @@ MILE works behind Caddy, Traefik or Nginx Proxy Manager. Serve it over **HTTPS**
 
 ### Email notifications
 
-Each user enables email and/or ntfy in **Settings › Notifications**. ntfy needs nothing on the server; email needs an SMTP account:
+Each user enables email and/or ntfy in **Settings › Notifications**. ntfy needs nothing on the server; email needs an SMTP account. The ntfy server can be on your local network (e.g. `http://192.168.1.10:8090`): MILE contacts the address each user enters, so on an instance with users you do not trust, keep it where it cannot reach other internal services.
 
 | Variable | Default | |
 |---|---|---|
@@ -100,10 +100,12 @@ Users can log in with Authentik, or with any other OpenID Connect provider (Auth
 | `MILE_OIDC_ISSUER` | | provider URL; needs `MILE_BASE_URL` too |
 | `MILE_OIDC_CLIENT_ID` / `MILE_OIDC_CLIENT_SECRET` | | from the provider page (no secret for public clients) |
 | `MILE_OIDC_NAME` | `SSO` | shown on the button: *Log in with Authentik* |
-| `MILE_OIDC_AUTO_REGISTER` | `true` | create a MILE user at the first login; with `false` only linked users can log in |
+| `MILE_OIDC_AUTO_REGISTER` | `false` | `true` creates a MILE user for anyone who logs in through the provider; with `false` only existing, linked users can log in |
 | `MILE_OIDC_ADMIN_GROUP` | | members of this group are administrators, checked at every login (needs the `groups` claim) |
 
-At the first login MILE creates the user with the Authentik username, and on a new installation the first user becomes the administrator. **Existing users** log in with their password once and link their account in **Settings › Login with Authentik**: a user with the same name is never linked automatically. Login with a password keeps working, and users created by Authentik can set one in Settings.
+On a new installation the first login creates the administrator, with the Authentik username. Other users are created by the administrator in **Settings › Users** and link their account in **Settings › Login with Authentik**; with `MILE_OIDC_AUTO_REGISTER=true` MILE creates them at their first login instead, so limit who can open the application in Authentik. A user with the same name is never linked automatically. Login with a password keeps working, and users created by Authentik can set one in Settings.
+
+Sessions opened with Authentik last 30 days, then MILE sends the user through Authentik again: a user disabled there, or removed from the admin group, loses access within that time. To lock someone out at once, delete them in **Settings › Users** too.
 
 **Locked out?** Reset a password from the command line:
 

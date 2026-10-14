@@ -54,7 +54,7 @@ func Load() Config {
 		OIDCClientID:     os.Getenv("MILE_OIDC_CLIENT_ID"),
 		OIDCClientSecret: os.Getenv("MILE_OIDC_CLIENT_SECRET"),
 		OIDCName:         env("MILE_OIDC_NAME", "SSO"),
-		OIDCAutoRegister: envBool("MILE_OIDC_AUTO_REGISTER", true),
+		OIDCAutoRegister: envBool("MILE_OIDC_AUTO_REGISTER", false),
 		OIDCAdminGroup:   os.Getenv("MILE_OIDC_ADMIN_GROUP"),
 	}
 }

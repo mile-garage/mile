@@ -19,6 +19,7 @@ services:
       # MILE_OIDC_CLIENT_ID: change-me
       # MILE_OIDC_CLIENT_SECRET: change-me
       # MILE_OIDC_NAME: Authentik
+      # MILE_OIDC_AUTO_REGISTER: "true"   # create users at their first login
     volumes:
       - mile-data:/data
     # With a host path (e.g. a TrueNAS dataset) run as the user that owns it:

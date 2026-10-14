@@ -342,6 +342,11 @@ DROP TABLE expenses;
 ALTER TABLE expenses_new RENAME TO expenses;
 CREATE INDEX expenses_vehicle ON expenses(vehicle_id, date);
 `,
+	`
+-- Sessions opened with OpenID Connect are not extended: the user goes back
+-- through the identity provider, which may have disabled them in the meantime.
+ALTER TABLE sessions ADD COLUMN sso INTEGER NOT NULL DEFAULT 0;
+`,
 }
 
 // migrate applies the pending migrations on a single connection with

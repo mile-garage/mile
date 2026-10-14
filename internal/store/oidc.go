@@ -39,12 +39,18 @@ func OIDCUsername(candidates ...string) string {
 
 // CreateOIDCUser creates a user without a password, linked to the identity.
 // The first user of a new installation becomes an administrator, as with setup.
-func (s *Store) CreateOIDCUser(id OIDCIdentity, username, displayName string, admin bool) (*User, error) {
+// With firstOnly it creates that first user only, and returns ErrForbidden
+// once there are users: the way in when new users are not registered.
+func (s *Store) CreateOIDCUser(id OIDCIdentity, username, displayName string, admin, firstOnly bool) (*User, error) {
 	if !usernameRe.MatchString(username) {
 		return nil, invalid("username_invalid", "Username: 2-64 characters, letters, digits and . _ @ -")
 	}
 	in := UserInput{Username: username, DisplayName: Clean(displayName), IsAdmin: admin}
-	u, err := s.insertUser(in, "", &id, adminWhenFirst)
+	first := adminWhenFirst
+	if firstOnly {
+		in.IsAdmin, first = true, onlyFirst
+	}
+	u, err := s.insertUser(in, "", &id, first)
 	if ve := (*ValidationError)(nil); errors.As(err, &ve) && ve.Code == "username_taken" {
 		return nil, invalid("sso_username_taken", "A user named "+username+" already exists: log in with the password and link the account in Settings")
 	}

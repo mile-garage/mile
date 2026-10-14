@@ -58,7 +58,8 @@ func main() {
 }
 
 func open(cfg config.Config) (*store.Store, error) {
-	if err := os.MkdirAll(cfg.FilesDir(), 0o755); err != nil {
+	private(cfg.DataDir)
+	if err := os.MkdirAll(cfg.FilesDir(), 0o700); err != nil {
 		return nil, err
 	}
 	d, err := db.Open(cfg.DBPath())

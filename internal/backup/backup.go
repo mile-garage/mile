@@ -22,7 +22,7 @@ const prefix = "mile-"
 // Run makes one backup a day (VACUUM INTO, safe while the database is in
 // use) and keeps the last keep files.
 func Run(ctx context.Context, db *sql.DB, dir string, keep int, daily func()) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		slog.Error("backup: directory", "err", err)
 		return
 	}

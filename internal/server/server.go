@@ -253,7 +253,7 @@ func (s *Server) setCookie(w http.ResponseWriter, r *http.Request, token string)
 }
 
 func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u *store.User) {
-	token, err := s.store.CreateSession(u.ID)
+	token, err := s.store.CreateSession(u.ID, false)
 	if err != nil {
 		fail(w, err)
 		return

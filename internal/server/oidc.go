@@ -234,12 +234,13 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	u, err := s.store.UserByOIDC(id)
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		if !s.oidc.AutoRegister {
+		// without auto-registration only the first user of a new installation is created
+		name := store.OIDCUsername(claims.PreferredUsername, claims.Email, id.Subject)
+		u, err = s.store.CreateOIDCUser(id, name, claims.Name, admin, !s.oidc.AutoRegister)
+		if errors.Is(err, store.ErrForbidden) {
 			ssoFail(w, r, back, "sso_not_registered")
 			return
 		}
-		name := store.OIDCUsername(claims.PreferredUsername, claims.Email, id.Subject)
-		u, err = s.store.CreateOIDCUser(id, name, claims.Name, admin)
 		if err == nil {
 			slog.Info("sso: user created", "username", u.Username, "admin", u.IsAdmin)
 		}
@@ -250,7 +251,7 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		ssoFail(w, r, back, ssoCode(err))
 		return
 	}
-	token, err := s.store.CreateSession(u.ID)
+	token, err := s.store.CreateSession(u.ID, true)
 	if err != nil {
 		ssoFail(w, r, back, ssoCode(err))
 		return

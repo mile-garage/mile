@@ -6,6 +6,7 @@ package server
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -133,4 +134,43 @@ func TestSecureCookieFromBaseURL(t *testing.T) {
 	if sc := res.Header.Get("Set-Cookie"); !strings.Contains(sc, "Secure") {
 		t.Fatalf("cookie without Secure behind an https base URL: %s", sc)
 	}
+}
+
+func TestSSOSessionNotExtended(t *testing.T) {
+	app := newApp(t)
+	u, err := app.store.CreateFirstUser(store.UserInput{Username: "gabri", Password: "password123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expiry := func(token string) time.Time {
+		var s string
+		app.store.DB.QueryRow(`SELECT expires_at FROM sessions WHERE token_hash = ?`, hashOf(token)).Scan(&s)
+		e, _ := time.Parse(time.DateTime, s)
+		return e
+	}
+	sso, _ := app.store.CreateSession(u.ID, true)
+	pw, _ := app.store.CreateSession(u.ID, false)
+	// pretend both were opened two days ago
+	app.store.DB.Exec(`UPDATE sessions SET expires_at = datetime(expires_at, '-2 days')`)
+	before := expiry(sso)
+	if _, err := app.store.SessionUser(sso); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.store.SessionUser(pw); err != nil {
+		t.Fatal(err)
+	}
+	if !expiry(sso).Equal(before) {
+		t.Fatal("an SSO session was extended")
+	}
+	if d := time.Until(before); d > 29*24*time.Hour || d < 27*24*time.Hour {
+		t.Fatalf("SSO session lasts %v", d)
+	}
+	if time.Until(expiry(pw)) < 364*24*time.Hour {
+		t.Fatal("a password session was not extended")
+	}
+}
+
+func hashOf(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }

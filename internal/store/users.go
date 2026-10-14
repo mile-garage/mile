@@ -29,6 +29,7 @@ type User struct {
 const (
 	minPassword     = 8
 	sessionDuration = 365 * 24 * time.Hour
+	ssoSession      = 30 * 24 * time.Hour // fixed, never extended
 )
 
 var usernameRe = regexp.MustCompile(`^[A-Za-z0-9._@-]{2,64}$`)
@@ -269,16 +270,22 @@ func tokenHash(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func (s *Store) CreateSession(userID int64) (string, error) {
+// CreateSession opens a session; sso marks one opened with OpenID Connect.
+func (s *Store) CreateSession(userID int64, sso bool) (string, error) {
 	token := randomToken(32)
 	n := time.Now().UTC()
-	_, err := s.DB.Exec(`INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`,
-		tokenHash(token), userID, n.Format(time.DateTime), n.Add(sessionDuration).Format(time.DateTime))
+	d := sessionDuration
+	if sso {
+		d = ssoSession
+	}
+	_, err := s.DB.Exec(`INSERT INTO sessions (token_hash, user_id, created_at, expires_at, sso) VALUES (?, ?, ?, ?, ?)`,
+		tokenHash(token), userID, n.Format(time.DateTime), n.Add(d).Format(time.DateTime), boolInt(sso))
 	return token, err
 }
 
-// SessionUser returns the user of a valid session, extending sessions older
-// than a day so that active users never have to log in again.
+// SessionUser returns the user of a valid session, extending password sessions
+// older than a day so that active users never have to log in again. SSO
+// sessions are not extended: after 30 days the identity provider is asked again.
 func (s *Store) SessionUser(token string) (*User, error) {
 	if token == "" {
 		return nil, ErrNotFound
@@ -286,7 +293,8 @@ func (s *Store) SessionUser(token string) (*User, error) {
 	h := tokenHash(token)
 	var userID int64
 	var expires string
-	err := s.DB.QueryRow(`SELECT user_id, expires_at FROM sessions WHERE token_hash = ?`, h).Scan(&userID, &expires)
+	var sso bool
+	err := s.DB.QueryRow(`SELECT user_id, expires_at, sso FROM sessions WHERE token_hash = ?`, h).Scan(&userID, &expires, &sso)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -299,7 +307,7 @@ func (s *Store) SessionUser(token string) (*User, error) {
 		s.DB.Exec(`DELETE FROM sessions WHERE token_hash = ?`, h)
 		return nil, ErrNotFound
 	}
-	if exp.Sub(n) < sessionDuration-24*time.Hour {
+	if !sso && exp.Sub(n) < sessionDuration-24*time.Hour {
 		s.DB.Exec(`UPDATE sessions SET expires_at = ? WHERE token_hash = ?`, n.Add(sessionDuration).Format(time.DateTime), h)
 	}
 	return s.GetUser(userID)

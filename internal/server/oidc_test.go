@@ -219,6 +219,17 @@ func TestOIDCLink(t *testing.T) {
 func TestOIDCRejected(t *testing.T) {
 	p := newProvider(t)
 	ts := newOIDCServer(t, p, func(c *OIDCConfig) { c.AutoRegister = false })
+	// On a new installation the first user is created anyway, as administrator.
+	p.as("sub-first", "first")
+	first := newClient(t, ts)
+	if end := first.ssoLogin(); end != "/" {
+		t.Fatalf("first user ended at %s", end)
+	}
+	var me store.User
+	first.must("GET", "/api/me", nil, &me)
+	if !me.IsAdmin {
+		t.Fatal("the first user should be an administrator")
+	}
 	p.as("sub-x", "stranger")
 	c := newClient(t, ts)
 	if end := c.ssoLogin(); end != "/?sso_error=sso_not_registered" {
