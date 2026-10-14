@@ -7,6 +7,12 @@
   --brand-2: #164a44;
   --on-brand: #ffffff;
   --on-brand-muted: #c9d6d3;
+  --on-brand-faint: #8fb0ab;
+  --on-brand-hover: rgb(255 255 255 / 8%);
+  --on-brand-active: rgb(255 255 255 / 13%);
+  --on-brand-line: rgb(255 255 255 / 22%);
+  --sidebar: var(--brand);
+  --cover-icon: #4b8279; /* vehicle icon on the petrol ground when there is no photo */
   --cta: #f5b82e; /* yellow: the main action of a screen */
   --cta-600: #e5a71c;
   --on-cta: #0e3b37;
@@ -37,14 +43,32 @@
   --ok-50: #e2efea;
   --info: #3f4c5e;
   --info-50: #e6eaf0;
-  /* chart series (validated categorical slots 1-3) */
-  --s-fuel: #2a78d6;
-  --s-expenses: #eb6834;
-  --s-insurance: #1baf7a;
+  --on-danger: #ffffff;
+  /* deadline pills inside the petrol "next" card: the same in both themes */
+  --hero-over: #ff9d7a;
+  --on-hero-over: #3a1203;
+  --hero-grace: #ffb787;
+  --on-hero-grace: #3a1a03;
+  --hero-ok: #9ed9c4;
+  --on-hero-ok: #0e3b37;
+  --hero-suspended: #c8d2de;
+  --on-hero-suspended: #1c2633;
+  /* chart series, from the logo: petrol, road yellow, sage */
+  --s-fuel: #0e3b37;
+  --s-expenses: #e5a71c;
+  --s-insurance: #7fb3a8;
+  --bar: var(--accent);
+  --switch-thumb: #ffffff;
+  --scrim: rgb(8 20 18 / 55%);
+  --hero-btn: rgb(10 30 28 / 45%);
+  --hero-btn-hover: rgb(10 30 28 / 65%);
   --radius: 18px;
   --radius-sm: 12px;
   --shadow: none;
+  --shadow-sm: 0 1px 3px rgb(14 30 28 / 14%);
+  --shadow-fab: 0 6px 16px rgb(14 59 55 / 28%);
   --shadow-lg: 0 16px 40px rgb(14 30 28 / 22%);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --font: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
@@ -91,10 +115,16 @@
   --ok-50: #15302a;
   --info: #b4bfcc;
   --info-50: #232b35;
-  --s-fuel: #3987e5;
-  --s-expenses: #d95926;
-  --s-insurance: #199e70;
+  --on-danger: #2a0d0b;
+  --sidebar: #0f2522;
+  --s-fuel: #8fd3c4;
+  --s-expenses: #f5b82e;
+  --s-insurance: #3f7f75;
+  --scrim: rgb(0 0 0 / 60%);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 40%);
+  --shadow-fab: 0 6px 16px rgb(0 0 0 / 45%);
   --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
+  /* --cta, --cta-600 and --on-cta stay the same: the yellow reads on both grounds */
   color-scheme: dark;
   accent-color: var(--accent);
 }
@@ -152,7 +182,7 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 .sr-only {
@@ -225,7 +255,7 @@ textarea {
   border-radius: 50%;
   background: var(--cta);
   color: var(--on-cta);
-  box-shadow: 0 6px 16px rgb(14 59 55 / 28%);
+  box-shadow: var(--shadow-fab);
 }
 .content {
   flex: 1;
@@ -250,11 +280,8 @@ textarea {
     gap: 24px;
     overflow-y: auto;
     padding: 24px 16px;
-    background: var(--brand);
+    background: var(--sidebar);
     color: var(--on-brand);
-  }
-  :root[data-theme='dark'] .sidebar {
-    background: #0f2522;
   }
   .content {
     padding: 32px 32px 48px;
@@ -294,12 +321,12 @@ textarea {
 }
 .side-nav a:hover,
 .side-vehicles a:hover {
-  background: rgb(255 255 255 / 8%);
+  background: var(--on-brand-hover);
   color: var(--on-brand);
 }
 .side-nav a.active,
 .side-vehicles a.active {
-  background: rgb(255 255 255 / 13%);
+  background: var(--on-brand-active);
   color: var(--on-brand);
   font-weight: 600;
 }
@@ -321,7 +348,7 @@ textarea {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8fb0ab;
+  color: var(--on-brand-faint);
 }
 .sidebar .btn-cta {
   margin-top: auto;
@@ -396,11 +423,6 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-@media (max-width: 520px) {
-  .hide-sm {
-    display: none !important;
-  }
 }
 
 /* ---- cards and lists ---- */
@@ -611,7 +633,7 @@ textarea {
 .segmented button.on {
   background: var(--surface);
   color: var(--accent);
-  box-shadow: 0 1px 3px rgb(14 30 28 / 14%);
+  box-shadow: var(--shadow-sm);
 }
 .tabs {
   display: flex;
@@ -664,31 +686,31 @@ textarea {
   flex: 1;
 }
 .next .btn-ghost {
-  border-color: rgb(255 255 255 / 22%);
+  border-color: var(--on-brand-line);
   color: var(--on-brand);
 }
 .next .btn-ghost:hover {
-  background: rgb(255 255 255 / 8%);
+  background: var(--on-brand-hover);
 }
 .next .pill-overdue {
-  background: #ff9d7a;
-  color: #3a1203;
+  background: var(--hero-over);
+  color: var(--on-hero-over);
 }
 .next .pill-grace {
-  background: #ffb787;
-  color: #3a1a03;
+  background: var(--hero-grace);
+  color: var(--on-hero-grace);
 }
 .next .pill-due_soon {
   background: var(--cta);
   color: var(--on-cta);
 }
 .next .pill-ok {
-  background: #9ed9c4;
-  color: #0e3b37;
+  background: var(--hero-ok);
+  color: var(--on-hero-ok);
 }
 .next .pill-suspended {
-  background: #c8d2de;
-  color: #1c2633;
+  background: var(--hero-suspended);
+  color: var(--on-hero-suspended);
 }
 @media (min-width: 760px) {
   .next {
@@ -838,7 +860,7 @@ textarea {
 .cover-empty {
   display: grid;
   place-items: center;
-  color: #4b8279;
+  color: var(--cover-icon);
 }
 .vehicle-card .cover-empty {
   aspect-ratio: 3 / 1;
@@ -919,7 +941,9 @@ textarea {
 .vehicle-hero .cover-empty {
   display: grid;
   place-items: center;
-  color: #4b8279;
+  /* without a photo the band only holds the buttons and a small icon */
+  height: 150px;
+  color: var(--cover-icon);
 }
 .hero-btn {
   position: absolute;
@@ -930,13 +954,13 @@ textarea {
   height: 44px;
   border: 0;
   border-radius: 50%;
-  background: rgb(10 30 28 / 45%);
-  color: #ffffff;
+  background: var(--hero-btn);
+  color: var(--on-brand);
   cursor: pointer;
   text-decoration: none;
 }
 .hero-btn:hover {
-  background: rgb(10 30 28 / 65%);
+  background: var(--hero-btn-hover);
 }
 .hero-btn.left {
   left: 14px;
@@ -970,6 +994,13 @@ textarea {
   .vehicle-hero .hero-cover {
     height: 260px;
     border-radius: var(--radius);
+  }
+  .vehicle-hero .cover-empty {
+    height: 72px;
+  }
+  .vehicle-hero .cover-empty .icon {
+    width: 40px;
+    height: 40px;
   }
   .hero-btn {
     top: 14px;
@@ -1036,9 +1067,6 @@ textarea {
   border: 0;
   border-top: 1px solid var(--border);
 }
-.menu .danger {
-  color: var(--danger);
-}
 @media (min-width: 760px) {
   .menu {
     top: 66px;
@@ -1050,6 +1078,23 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 12px;
+}
+/* three tiles on a phone: the first one takes the whole row, no orphan */
+@media (max-width: 520px) {
+  .tiles-lead {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tiles-lead > .tile:first-child {
+    grid-column: 1 / -1;
+  }
+}
+/* two tiles inside a card */
+.tiles-inset {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 12px 0 0;
+}
+.tiles-inset .tile {
+  background: var(--surface-2);
 }
 .tile {
   display: flex;
@@ -1120,19 +1165,6 @@ textarea {
 }
 .policy.retired {
   opacity: 0.75;
-}
-.callout {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: var(--warn-50);
-  color: var(--warn);
-  margin-bottom: 12px;
-}
-.callout > span {
-  flex: 1;
 }
 .tyre-history {
   list-style: none;
@@ -1299,6 +1331,8 @@ textarea {
   min-height: 2px;
 }
 .month-label {
+  /* the tallest bar takes the whole column: the bar shrinks, not the label */
+  flex-shrink: 0;
   font-size: 12px;
   text-align: center;
   color: var(--muted);
@@ -1320,6 +1354,12 @@ textarea {
   gap: 10px;
   font-size: 14px;
 }
+.hbar-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .hbar-track {
   height: 12px;
 }
@@ -1327,7 +1367,7 @@ textarea {
   display: block;
   height: 100%;
   min-width: 2px;
-  background: var(--s-fuel);
+  background: var(--bar);
   border-radius: 0 4px 4px 0;
 }
 .hbar-value {
@@ -1522,8 +1562,8 @@ input[type='checkbox'] {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  background: var(--switch-thumb);
+  box-shadow: var(--shadow-sm);
   transition: left 0.15s;
 }
 .switch:checked {
@@ -1664,15 +1704,30 @@ input.switch {
   padding: 4px 12px;
   font-size: 14px;
 }
-.btn-primary,
-.btn-cta {
+/* Yellow is kept for the one main action of a screen (btn-cta). A dialog or
+   the login card is a screen of its own, so its primary button turns yellow
+   too; elsewhere primary buttons are petrol, so they never compete with it. */
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.btn-primary:hover {
+  filter: brightness(1.12);
+}
+.btn-cta,
+.modal .btn-primary,
+.auth-card .btn-primary {
   background: var(--cta);
   border-color: var(--cta);
   color: var(--on-cta);
   font-weight: 700;
+  filter: none;
 }
-.btn-primary:hover,
-.btn-cta:hover {
+.btn-cta:hover,
+.modal .btn-primary:hover,
+.auth-card .btn-primary:hover {
   background: var(--cta-600);
   border-color: var(--cta-600);
 }
@@ -1687,7 +1742,7 @@ input.switch {
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
 }
 .btn-danger:hover {
   background: var(--danger);
@@ -1744,7 +1799,7 @@ input.switch {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgb(8 20 18 / 55%);
+  background: var(--scrim);
 }
 .modal {
   width: 100%;
@@ -1968,7 +2023,7 @@ input.switch {
 }
 .toast-error {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
 }
 .spinner {
   display: inline-block;
@@ -1984,9 +2039,11 @@ input.switch {
   height: 16px;
   border-width: 2px;
 }
-.btn-primary .spinner {
-  border-color: rgb(14 59 55 / 25%);
-  border-top-color: var(--on-cta);
+.btn-primary .spinner,
+.btn-cta .spinner,
+.btn-danger .spinner {
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
 }
 @keyframes spin {
   to {

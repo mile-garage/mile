@@ -397,7 +397,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
         </section>
 
         <div className="form-footer">
-          <button className="btn btn-primary btn-lg" disabled={busy}>
+          <button className="btn btn-cta btn-lg" disabled={busy}>
             {busy ? <Spinner small /> : t('common.save')}
           </button>
         </div>

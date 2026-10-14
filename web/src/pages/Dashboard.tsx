@@ -61,7 +61,7 @@ export function Dashboard() {
         <div className="hero">
           <Icon name="car" size={40} />
           <p>{t('vehicles.empty')}</p>
-          <Link className="btn btn-primary btn-lg" to="/vehicles/new">
+          <Link className="btn btn-cta btn-lg" to="/vehicles/new">
             <Icon name="plus" size={18} />
             {t('vehicles.first')}
           </Link>
@@ -86,7 +86,7 @@ export function Dashboard() {
       ) : (
         <section className="next" aria-label={t('home.next')}>
           <div className="next-top">
-            <span className="next-kicker">{t('home.next')}</span>
+            <span className="next-kicker">{next.status === 'overdue' || next.status === 'grace' ? t('status.overdue') : t('home.next')}</span>
             <span className={`pill pill-${next.status}`}>
               {next.status === 'suspended' ? t('status.suspended') : next.days_left !== undefined ? relativeDays(next.days_left, t) : t(`status.${next.status}`)}
             </span>

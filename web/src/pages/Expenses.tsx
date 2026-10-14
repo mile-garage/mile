@@ -54,7 +54,7 @@ export function Expenses() {
   const catList = [...cats.entries()].sort((a, b) => b[1] - a[1])
   const maxCat = Math.max(1, ...catList.map((c) => c[1]))
   const maxMonth = Math.max(1, ...months.map(monthTotal))
-  const seriesLabel = { fuel: t('cat.fuel'), expenses: t('tab.expenses'), insurance: t('cat.insurance') }
+  const seriesLabel = { fuel: t('cat.fuel'), expenses: t('summary.otherExpenses'), insurance: t('cat.insurance') }
 
   return (
     <div className="page">
@@ -81,7 +81,7 @@ export function Expenses() {
         <Empty>{t('expenses.empty')}</Empty>
       ) : (
         <>
-          <div className="tiles">
+          <div className="tiles tiles-lead">
             <div className="tile">
               <span className="tile-label">{t('expenses.thisMonth')}</span>
               <span className="tile-value">{euro(current ? monthTotal(current) : 0, locale)}</span>

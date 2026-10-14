@@ -78,13 +78,13 @@ export function TyresTab({ vehicle, canEdit, version, changed }: TabProps) {
             <div className="muted" style={{ marginTop: 4 }}>
               {[t(`tyres.season.${s.season}`), s.dot && `${t('tyres.dot')} ${s.dot}${age ? ` (${age})` : ''}`, !s.mounted && s.storage].filter(Boolean).join(' · ')}
             </div>
-            <div className="tiles" style={{ marginTop: 12, marginBottom: 0, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-              <div className="tile" style={{ background: 'var(--surface-2)' }}>
+            <div className="tiles tiles-inset">
+              <div className="tile">
                 <span className="tile-label">{t('tyres.km')}</span>
                 <span className="tile-value">{num(s.km, locale)} km</span>
               </div>
               {rotates && s.km > 0 && (
-                <div className="tile" style={{ background: 'var(--surface-2)' }}>
+                <div className="tile">
                   <span className="tile-label">{t('tyres.kmSinceRotation')}</span>
                   <span className="tile-value">{num(s.km_since_rotation, locale)} km</span>
                 </div>

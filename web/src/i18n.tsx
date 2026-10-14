@@ -237,6 +237,7 @@ const it = {
   'summary.total': 'Spesa totale',
   'summary.costKm': 'Costo al km',
   'summary.byCategory': 'Per categoria',
+  'summary.otherExpenses': 'Altre spese',
   'summary.last12': 'Ultimi 12 mesi',
 
   'reminder.new': 'Nuovo promemoria',
@@ -795,6 +796,7 @@ const en: Record<Key, string> = {
   'summary.total': 'Total spent',
   'summary.costKm': 'Cost per km',
   'summary.byCategory': 'By category',
+  'summary.otherExpenses': 'Other expenses',
   'summary.last12': 'Last 12 months',
 
   'reminder.new': 'New reminder',

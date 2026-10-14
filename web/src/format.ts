@@ -47,14 +47,18 @@ export function monthName(m: number, locale: Locale): string {
 
 const tag = (l: Locale) => (l === 'it' ? 'it-IT' : 'en-GB')
 
+// Italian leaves 4-digit numbers ungrouped ("7400" next to "10.880"):
+// always group, so every amount and distance reads the same way.
+const grouping = { useGrouping: 'always' } as unknown as Intl.NumberFormatOptions
+
 export function euro(cents: number | null | undefined, locale: Locale): string {
   if (cents === null || cents === undefined) return ''
-  return (cents / 100).toLocaleString(tag(locale), { style: 'currency', currency: 'EUR' })
+  return (cents / 100).toLocaleString(tag(locale), { ...grouping, style: 'currency', currency: 'EUR' })
 }
 
 export function num(n: number | null | undefined, locale: Locale, digits = 0): string {
   if (n === null || n === undefined) return ''
-  return n.toLocaleString(tag(locale), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  return n.toLocaleString(tag(locale), { ...grouping, minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 /** Parses "1.234,56", "1234.56" or "1234,5". Empty → null, invalid → NaN. */

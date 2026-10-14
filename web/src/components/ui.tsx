@@ -7,7 +7,7 @@ import { useI18n } from '../i18n'
 
 // ---- toast ----
 
-type ToastKind = 'ok' | 'error' | 'info'
+type ToastKind = 'ok' | 'error'
 interface Toast {
   id: number
   kind: ToastKind
