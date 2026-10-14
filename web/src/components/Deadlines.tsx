@@ -215,6 +215,7 @@ export function useDeadlineActions(vehicles: Vehicle[]) {
           toast(r.done_at ? t('common.saved') : t('reminder.doneRepeat', { date: date(r.due_date, locale) }))
           notifyChanged()
         } else {
+          if (!canEdit(d)) return
           const all = await api.get<Reminder[]>('/api/reminders')
           const r = all.find((x) => x.id === d.ref_id)
           if (r) setReminder(r)
@@ -256,5 +257,14 @@ export function useDeadlineActions(vehicles: Vehicle[]) {
       )}
     </>
   )
-  return { run, canEdit, element }
+  /** Explicit "done" button for a reminder row: tapping the row only opens it. */
+  const rowActions = (d: Deadline) =>
+    d.kind === 'reminder' && canEdit(d) ? (
+      <button className="btn btn-sm" onClick={() => run(d, true)}>
+        <Icon name="check" size={14} />
+        {t('deadline.done')}
+      </button>
+    ) : undefined
+
+  return { run, canEdit, rowActions, element }
 }

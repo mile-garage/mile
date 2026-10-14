@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Gabriele Menghi
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { type Vehicle } from '../api'
 import { useI18n } from '../i18n'
@@ -9,7 +9,7 @@ import { num } from '../format'
 import { Icon } from '../components/Icon'
 import { OdometerForm } from '../components/Forms'
 import { ExportDialog, ImportDialog } from '../components/Transfer'
-import { Loading, useLoad } from '../components/ui'
+import { Loading, notifyChanged, useLoad } from '../components/ui'
 import { Plate, VehicleCover } from './Vehicles'
 import { DocsTab, LogTab, StatusTab } from './VehicleTabs'
 import { TyresTab } from './Tyres'
@@ -27,7 +27,13 @@ const oldTabs: Record<string, Tab> = {
   photos: 'docs',
 }
 
-export function VehicleDetail() {
+/** A new vehicle starts from a clean page: no menu or form left open from the previous one. */
+export function VehicleDetailPage() {
+  const { id } = useParams()
+  return <VehicleDetail key={id} />
+}
+
+function VehicleDetail() {
   const { id } = useParams()
   const { t, locale } = useI18n()
   const [params, setParams] = useSearchParams()
@@ -38,13 +44,33 @@ export function VehicleDetail() {
   // bumped after every change, so that the tabs reload their data
   const [version, setVersion] = useState(0)
   const asked = params.get('tab') ?? ''
-  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : (oldTabs[asked] ?? 'status')
+  const tab: Tab = tabs.includes(asked as Tab) ? (asked as Tab) : Object.hasOwn(oldTabs, asked) ? oldTabs[asked] : 'status'
 
+  const menuRef = useRef<HTMLDivElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!menu) return
+    const items = () => [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])]
+    items()[0]?.focus()
     const close = () => setMenu(false)
+    // keyboard: Esc closes and gives the focus back, the arrows move between items
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenu(false)
+        menuButton.current?.focus()
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const all = items()
+        const i = all.indexOf(document.activeElement as HTMLElement)
+        all[(i + (e.key === 'ArrowDown' ? 1 : all.length - 1)) % all.length]?.focus()
+      }
+    }
     window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('click', close)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [menu])
 
   const v = vehicle.data
@@ -64,7 +90,9 @@ export function VehicleDetail() {
           <Icon name="back" size={22} />
         </Link>
         <button
+          ref={menuButton}
           className="hero-btn right"
+          aria-haspopup="menu"
           aria-label={t('vehicle.more')}
           aria-expanded={menu}
           onClick={(e) => {
@@ -75,7 +103,7 @@ export function VehicleDetail() {
           <Icon name="more" size={22} />
         </button>
         {menu && (
-          <div className="menu" role="menu">
+          <div className="menu" role="menu" ref={menuRef}>
             {canEdit && (
               <Link role="menuitem" to={`/vehicles/${v.id}/edit`}>
                 <Icon name="edit" size={18} />
@@ -142,7 +170,7 @@ export function VehicleDetail() {
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null)
-            changed()
+            notifyChanged() // the import can change the km shown elsewhere
           }}
         />
       )}

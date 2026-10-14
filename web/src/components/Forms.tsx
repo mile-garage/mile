@@ -251,7 +251,8 @@ export function ExpenseForm({
   const [notes, setNotes] = useState(init.notes ?? '')
   const [files, setFiles] = useState<Attachment[]>(expense?.attachments ?? [])
   const [pending, setPending] = useState<File[]>([])
-  const [more, setMore] = useState(!!(init.description || init.vendor || init.notes))
+  // open when something in there is filled in: an older date, a receipt, a note
+  const [more, setMore] = useState(!!(init.description || init.vendor || init.notes || files.length || (init.date && init.date !== today())))
   const { busy, run } = useSubmit()
 
   const submit = (e: FormEvent) => {
@@ -382,7 +383,7 @@ export function RefuelForm({
   const [notes, setNotes] = useState(refuel?.notes ?? '')
   const [files, setFiles] = useState<Attachment[]>(refuel?.attachments ?? [])
   const [pending, setPending] = useState<File[]>([])
-  const [more, setMore] = useState(!!(refuel && (refuel.station || refuel.notes || refuel.missed_previous)))
+  const [more, setMore] = useState(!!(refuel && (refuel.station || refuel.notes || refuel.missed_previous || files.length || refuel.date !== today())))
   const { busy, run } = useSubmit()
 
   const ok = (v: number | null) => v !== null && !Number.isNaN(v) && v > 0

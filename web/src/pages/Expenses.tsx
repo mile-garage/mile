@@ -18,7 +18,9 @@ export function Expenses() {
   const [params, setParams] = useSearchParams()
   const vehicles = useLoad<Vehicle[]>('/api/vehicles')
   const [stats, setStats] = useState<Map<number, Stats> | null>(null)
-  const active = (vehicles.data ?? []).filter((v) => !v.archived)
+  const picked = Number(params.get('vehicle')) || null
+  // an archived vehicle is left out of the totals, but its own page still opens
+  const active = (vehicles.data ?? []).filter((v) => !v.archived || v.id === picked)
   const ids = active.map((v) => v.id).join(',')
 
   useEffect(() => {
@@ -34,7 +36,6 @@ export function Expenses() {
   }, [ids, vehicles.data])
 
   if (!vehicles.data || !stats) return <Loading />
-  const picked = Number(params.get('vehicle')) || null
   const shown = active.filter((v) => picked === null || v.id === picked)
   const list = shown.map((v) => stats.get(v.id)).filter((s): s is Stats => !!s)
 

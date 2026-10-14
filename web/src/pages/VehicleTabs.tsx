@@ -49,7 +49,14 @@ export function StatusTab({ vehicle, canEdit, version }: TabProps) {
       ) : (
         <div className="card list">
           {deadlines.data.map((d) => (
-            <DeadlineRow key={`${d.kind}-${d.ref_id}`} d={d} vehicle={vehicle} full onClick={() => actions.run(d, canEdit)} />
+            <DeadlineRow
+              key={`${d.kind}-${d.ref_id}`}
+              d={d}
+              vehicle={vehicle}
+              full
+              onClick={() => actions.run(d, canEdit && d.kind !== 'reminder')}
+              actions={actions.rowActions(d)}
+            />
           ))}
         </div>
       )}

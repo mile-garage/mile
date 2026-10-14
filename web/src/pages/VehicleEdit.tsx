@@ -8,7 +8,7 @@ import { PageHead, useSession } from '../App'
 import { useI18n } from '../i18n'
 import { date, monthName, num, numInput, parseNumber, today, unit } from '../format'
 import { Icon } from '../components/Icon'
-import { Field, Loading, Spinner, useLoad, useUI } from '../components/ui'
+import { Field, Loading, Spinner, notifyChanged, useLoad, useUI } from '../components/ui'
 import { MoreToggle } from '../components/Forms'
 
 const kinds: VehicleKind[] = ['car', 'motorcycle', 'moped', 'van', 'truck', 'other']
@@ -107,13 +107,17 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     setV((x) => ({ ...x, registration_date: dateOrNull(s), tax_month: x.tax_month ?? (s ? Number(s.slice(5, 7)) : null) }))
   }
 
-  const extraOn: Record<Extra, boolean> = {
+  const hasValues: Record<Extra, boolean> = {
     oil: !!(nums.oil_interval_km || nums.oil_interval_months),
     gearbox: !!(nums.transmission_oil_interval_km || nums.transmission_oil_interval_months),
     brakes: !!(nums.brake_pads_interval_km || nums.brake_discs_interval_km),
     rotation: !!nums.tyre_rotation_km,
   }
+  // Once shown, a group stays open while its fields are emptied to be retyped;
+  // only the switch closes it.
+  const [extraOn, setExtraOn] = useState(hasValues)
   const toggleExtra = (e: Extra) => {
+    setExtraOn((o) => ({ ...o, [e]: !o[e] }))
     const keys = Object.keys(extraDefaults[e]) as (keyof typeof nums)[]
     setNums((x) => {
       const y = { ...x }
@@ -174,6 +178,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
       const body = { ...v, ...parsed }
       const saved = vehicle ? await api.put<Vehicle>(`/api/vehicles/${vehicle.id}`, body) : await api.post<Vehicle>('/api/vehicles', body)
       toast(t('common.saved'))
+      notifyChanged() // the sidebar lists the vehicles too
       navigate(`/vehicles/${saved.id}`, { replace: !vehicle })
     } catch (err) {
       fail(err)
@@ -187,6 +192,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
       return
     try {
       await api.post(`/api/vehicles/${vehicle.id}/archive`, { archived: !vehicle.archived })
+      notifyChanged()
       navigate(`/vehicles/${vehicle.id}`)
     } catch (err) {
       fail(err)
@@ -199,6 +205,7 @@ function VehicleEditForm({ vehicle }: { vehicle?: Vehicle }) {
     try {
       await api.del(`/api/vehicles/${vehicle.id}`)
       toast(t('common.deleted'))
+      notifyChanged()
       navigate('/vehicles')
     } catch (err) {
       fail(err)

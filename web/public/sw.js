@@ -8,8 +8,8 @@
 // - pages: network first, the cached page when offline;
 // - /assets/ (hashed names, never change), fonts included: cache first;
 // - icons and manifest: cache, refreshed in the background.
-// This file does not change between releases: a new version of MILE is picked
-// up with the page, and the files it no longer uses are removed.
+// A new version of MILE is picked up with the page, and the files it no longer
+// uses are removed; this file only changes when the caching rules do.
 
 const CACHE = 'mile-ui-v1'
 const STATIC = ['/manifest.webmanifest', '/favicon.png', '/apple-touch-icon.png', '/icon-192.png', '/icon-512.png', '/logo-m.png']

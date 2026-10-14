@@ -39,6 +39,7 @@ export function Dashboard() {
           vehicle={d.vehicle_id ? byId.get(d.vehicle_id) : undefined}
           showVehicle={filter === null}
           onClick={() => actions.run(d, false)}
+          actions={actions.rowActions(d)}
         />
       ))}
     </div>

@@ -166,7 +166,16 @@ export function notifyChanged() {
 /** Loads data from the API; reload() fetches it again, as does notifyChanged(). */
 export function useLoad<T>(url: string | null, version = 0) {
   const { fail } = useUI()
-  const [data, setData] = useState<T | null>(null)
+  // the data is kept with its url, so a new url never shows the old data
+  const [loaded, setLoaded] = useState<{ url: string; data: T } | null>(null)
+  const data = url !== null && loaded?.url === url ? loaded.data : null
+  const setData = useCallback(
+    (d: T | ((prev: T | null) => T)) => {
+      if (url === null) return
+      setLoaded((prev) => ({ url, data: d instanceof Function ? d(prev?.url === url ? prev.data : null) : d }))
+    },
+    [url],
+  )
   const [n, setN] = useState(0)
   useEffect(() => {
     const onChange = () => setN((x) => x + 1)
@@ -177,7 +186,7 @@ export function useLoad<T>(url: string | null, version = 0) {
     if (!url) return
     let alive = true
     api.get<T>(url)
-      .then((d) => alive && setData(d))
+      .then((d) => alive && setLoaded({ url, data: d }))
       .catch((e) => alive && fail(e))
     return () => {
       alive = false

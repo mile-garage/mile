@@ -119,6 +119,8 @@ function Sidebar() {
   const { t } = useI18n()
   const { openAdd } = useAdd()
   const { data } = useLoad<Vehicle[]>('/api/vehicles')
+  // On a vehicle's page the "+" logs for that vehicle.
+  const vehicleId = Number(useMatch('/vehicles/:id/*')?.params.id) || undefined
   const vehicles = (data ?? []).filter((v) => !v.archived)
   return (
     <aside className="sidebar">
@@ -155,7 +157,7 @@ function Sidebar() {
           ))}
         </div>
       )}
-      <button type="button" className="btn btn-cta btn-lg" onClick={() => openAdd()}>
+      <button type="button" className="btn btn-cta btn-lg" onClick={() => openAdd(vehicleId)}>
         <Icon name="plus" />
         {t('nav.add')}
       </button>

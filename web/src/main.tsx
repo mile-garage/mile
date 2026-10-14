@@ -8,7 +8,7 @@ import { RouterProvider } from 'react-router/dom'
 import { Root } from './App'
 import { Dashboard } from './pages/Dashboard'
 import { Vehicles } from './pages/Vehicles'
-import { VehicleDetail } from './pages/VehicleDetail'
+import { VehicleDetailPage } from './pages/VehicleDetail'
 import { VehicleEdit } from './pages/VehicleEdit'
 import { Settings } from './pages/Settings'
 import { Expenses } from './pages/Expenses'
@@ -27,7 +27,7 @@ const router = createBrowserRouter([
       { path: '/', element: <Dashboard /> },
       { path: '/vehicles', element: <Vehicles /> },
       { path: '/vehicles/new', element: <VehicleEdit key="new" /> },
-      { path: '/vehicles/:id', element: <VehicleDetail /> },
+      { path: '/vehicles/:id', element: <VehicleDetailPage /> },
       { path: '/vehicles/:id/edit', element: <VehicleEdit /> },
       { path: '/expenses', element: <Expenses /> },
       { path: '/settings', element: <Settings /> },
