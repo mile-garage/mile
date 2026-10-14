@@ -27,6 +27,16 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="24%" alt="Deadlines">
+  <img src="docs/screenshots/vehicle.png" width="24%" alt="A vehicle's status">
+  <img src="docs/screenshots/add.png" width="24%" alt="The + button">
+  <img src="docs/screenshots/home-dark.png" width="24%" alt="Dark theme">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-expenses.png" width="97%" alt="Expenses on a desktop">
+</p>
+
 ## Install with Docker
 
 ```yaml
