@@ -6,6 +6,16 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 
 *Scadenziario per i tuoi veicoli: revisione, bollo, assicurazione (anche sospesa), tagliando, spese con fatture e scontrini, consumi e foto. Da installare sul tuo server, anche su TrueNAS.*
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="24%" alt="Deadlines">
+  <img src="docs/screenshots/vehicle.png" width="24%" alt="A vehicle's status">
+  <img src="docs/screenshots/add.png" width="24%" alt="The + button">
+  <img src="docs/screenshots/home-dark.png" width="24%" alt="Dark theme">
+</p>
+<p align="center">
+  <img src="docs/screenshots/desktop-expenses.png" width="97%" alt="Expenses on a desktop">
+</p>
+
 - **Deadlines computed, not typed in**
   - **Inspection (revisione)**: the first one is due 4 years after registration, then every 2 years, by the end of the month. A yearly rule is available for taxis and heavy vehicles.
   - **Road tax (bollo)**: due by the last day of the month after it expires. The expiry month is taken from the registration date. Exemptions are supported (e.g. electric and historic vehicles).
@@ -26,16 +36,6 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
 - **Mobile first**: log a refuel, a service or an expense in a few taps from the **+** button. Installable as an app from the browser (PWA), and it opens even without a connection. Italian and English, light and dark theme.
 
 One ~15 MB container, one SQLite file and a folder of attachments, nothing else to run.
-
-<p align="center">
-  <img src="docs/screenshots/home.png" width="24%" alt="Deadlines">
-  <img src="docs/screenshots/vehicle.png" width="24%" alt="A vehicle's status">
-  <img src="docs/screenshots/add.png" width="24%" alt="The + button">
-  <img src="docs/screenshots/home-dark.png" width="24%" alt="Dark theme">
-</p>
-<p align="center">
-  <img src="docs/screenshots/desktop-expenses.png" width="97%" alt="Expenses on a desktop">
-</p>
 
 ## Install with Docker
 
