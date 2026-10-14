@@ -1810,7 +1810,13 @@ input.switch {
   box-shadow: var(--shadow-lg);
   padding-bottom: var(--safe-bottom);
 }
-.modal::before {
+/* the handle: dragging it (or the title) down closes the sheet */
+.modal-grip {
+  height: 18px;
+  touch-action: none;
+  cursor: grab;
+}
+.modal-grip::before {
   content: '';
   display: block;
   width: 40px;
@@ -1828,7 +1834,7 @@ input.switch {
     width: 560px;
     border-radius: 22px;
   }
-  .modal::before {
+  .modal-grip {
     display: none;
   }
   .modal-narrow {
@@ -1839,6 +1845,7 @@ input.switch {
   position: sticky;
   top: 0;
   z-index: 1;
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: space-between;

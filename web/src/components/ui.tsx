@@ -1,7 +1,17 @@
 // Copyright (C) 2026 Gabriele Menghi
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { api } from '../api'
 import { useI18n } from '../i18n'
 
@@ -124,10 +134,13 @@ export function Modal({
       if (modalStack.length === 0) document.body.classList.remove('modal-open')
     }
   }, [])
+  const sheet = useRef<HTMLDivElement>(null)
+  const drag = useSheetDrag(sheet, () => onCloseRef.current())
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal${narrow ? ' modal-narrow' : ''}`} role="dialog" aria-modal="true">
-        <div className="modal-head">
+      <div ref={sheet} className={`modal${narrow ? ' modal-narrow' : ''}`} role="dialog" aria-modal="true">
+        <div className="modal-grip" aria-hidden="true" {...drag} />
+        <div className="modal-head" {...drag}>
           <div>
             <h2>{title}</h2>
             {sub && <div className="muted">{sub}</div>}
@@ -140,6 +153,81 @@ export function Modal({
       </div>
     </div>
   )
+}
+
+/**
+ * Phones: the sheet follows the finger when its handle or title is dragged
+ * down, and closes past a third of its height or with a quick flick.
+ */
+function useSheetDrag(sheet: RefObject<HTMLDivElement | null>, close: () => void) {
+  const start = useRef<{ y: number; t: number; id: number; dragging: boolean } | null>(null)
+  const move = (y: number) => {
+    const el = sheet.current
+    if (!el) return
+    el.style.transform = y > 0 ? `translateY(${y}px)` : ''
+    const backdrop = el.parentElement
+    if (backdrop) backdrop.style.opacity = y > 0 ? String(Math.max(0.3, 1 - y / el.offsetHeight)) : ''
+  }
+  const settle = (closing: boolean) => {
+    const el = sheet.current
+    if (!el) return
+    el.style.transition = 'transform 0.2s ease-out'
+    if (el.parentElement) el.parentElement.style.transition = 'opacity 0.2s ease-out'
+    if (closing) {
+      el.style.transform = 'translateY(100%)'
+      if (el.parentElement) el.parentElement.style.opacity = '0'
+      setTimeout(() => {
+        close()
+        // if the sheet is still there (e.g. it went back to a previous step), show it again
+        setTimeout(() => {
+          if (!el.isConnected) return
+          el.style.transition = el.style.transform = ''
+          if (el.parentElement) el.parentElement.style.transition = el.parentElement.style.opacity = ''
+        }, 50)
+      }, 180)
+    } else {
+      move(0)
+      setTimeout(() => {
+        el.style.transition = ''
+        if (el.parentElement) el.parentElement.style.transition = ''
+      }, 200)
+    }
+  }
+  return {
+    onPointerDown: (e: ReactPointerEvent) => {
+      // only the bottom sheet of phones; on wider screens it is a dialog
+      if (!e.isPrimary || !matchMedia('(max-width: 639px)').matches) return
+      start.current = { y: e.clientY, t: e.timeStamp, id: e.pointerId, dragging: false }
+    },
+    onPointerMove: (e: ReactPointerEvent) => {
+      const s = start.current
+      if (!s || e.pointerId !== s.id) return
+      const dy = e.clientY - s.y
+      if (!s.dragging) {
+        if (dy < 8) return
+        // from here the finger moves the sheet, not a button in the title
+        s.dragging = true
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {
+          // the pointer is already gone: the moves still arrive while it lasts
+        }
+      }
+      move(Math.max(0, dy))
+    },
+    onPointerUp: (e: ReactPointerEvent) => {
+      const s = start.current
+      start.current = null
+      if (!s?.dragging || !sheet.current) return
+      const dy = e.clientY - s.y
+      const speed = dy / Math.max(1, e.timeStamp - s.t)
+      settle(dy > sheet.current.offsetHeight / 3 || (dy > 40 && speed > 0.6))
+    },
+    onPointerCancel: () => {
+      if (start.current?.dragging) settle(false)
+      start.current = null
+    },
+  }
 }
 
 export function Spinner({ small }: { small?: boolean }) {
