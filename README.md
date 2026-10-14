@@ -67,7 +67,7 @@ Take a snapshot or a copy of `/data` first: a new version may update the databas
 docker compose pull && docker compose up -d
 ```
 
-On **TrueNAS SCALE** with the `latest` tag, run `sudo docker pull ghcr.io/mile-garage/mile:latest` in **System › Shell**, then **Stop** and **Start** the app; with a fixed tag, change it with **Edit**. The version is shown in **Settings › About**. Read the [release notes](https://github.com/mile-garage/mile/releases) before upgrading.
+On **TrueNAS SCALE** with the `latest` tag, pull the image the app uses, in **System › Shell**: `sudo docker pull ghcr.io/mile-garage/mile:latest`, or `sudo docker pull gabrielemenghi/mile:latest` if you installed it from Docker Hub (the two registries are separate). Then open the app, choose **Edit** and **Save** without changes: this recreates the container, while Stop and Start keep the old image. With a fixed tag, just change it with **Edit**. Check with `sudo docker exec mile /mile version`, or in **Settings › About**, then reload the page twice in the browser. Read the [release notes](https://github.com/mile-garage/mile/releases) before upgrading.
 
 **From 0.4 to 0.5**: `MILE_OIDC_AUTO_REGISTER` is now `false` by default (see below), and the files in `/data` become readable by MILE's user only.
 
