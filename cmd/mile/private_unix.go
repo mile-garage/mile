@@ -16,6 +16,8 @@ import (
 // private keeps the data readable by the user running MILE only: the
 // database, its backups and the attachments hold tokens and documents. New
 // files get it from the umask; those of older versions are fixed once here.
+// On a filesystem with inherited ACLs (e.g. a TrueNAS dataset made with the
+// Apps preset) the ACL wins over both, and the files stay as it says.
 func private(dataDir string) {
 	syscall.Umask(0o077)
 	warned := false
