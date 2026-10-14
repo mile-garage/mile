@@ -17,7 +17,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
   - **Tyres**: summer, winter and all-season sets. With summer tyres fitted, winter ones are due by 15 November (required until 15 April); with winter tyres, summer ones by 15 May. Front/rear rotation every N km, and the km driven on each set.
   - **Custom reminders** (driving licence…), optionally repeating.
 - **Expenses** by category, with PDF invoices and photos of receipts attached. A page shows what your vehicles cost month by month, all of them or one.
-- **Fuel**: consumption with the full-to-full method (l/100 km and km/l, kWh for EVs), cost per km, average price.
+- **Fuel**: consumption with the full-to-full method (l/100 km, kWh/100 km for EVs), cost per km, average price.
 - **Photos** of your vehicles, resized in the browser (HEIC from iPhones included).
 - **Calendar feed** (iCal): subscribe from your phone and get deadlines with alerts 7 days and 1 day before.
 - **Notifications** by email and [ntfy](https://ntfy.sh): a daily digest N days before each deadline (30, 7 and 1 by default), and when it has passed. Each reminder is sent only once.
@@ -58,6 +58,18 @@ Open `http://<server>:8080`: the first account you create is the administrator. 
 - **User**: run the container as the dataset's owner (usually `568:568`, the `apps` user), or give that user write access to the dataset
 
 Back up the dataset with periodic snapshots: it contains the database, its daily copies and all the attachments. MILE keeps these files readable by its own user only (`0600`): to copy a backup through an SMB share, do it as that user.
+
+### Upgrading
+
+Take a snapshot or a copy of `/data` first: a new version may update the database, and there is no way back. Then:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+On **TrueNAS SCALE** with the `latest` tag, run `sudo docker pull ghcr.io/mile-garage/mile:latest` in **System › Shell**, then **Stop** and **Start** the app; with a fixed tag, change it with **Edit**. The version is shown in **Settings › About**. Read the [release notes](https://github.com/mile-garage/mile/releases) before upgrading.
+
+**From 0.4 to 0.5**: `MILE_OIDC_AUTO_REGISTER` is now `false` by default (see below), and the files in `/data` become readable by MILE's user only.
 
 ### Behind a reverse proxy
 
