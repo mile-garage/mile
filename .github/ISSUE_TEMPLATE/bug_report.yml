@@ -1,0 +1,43 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! You can write in English or Italian.
+  - type: input
+    id: version
+    attributes:
+      label: MILE version
+      description: In Settings › About, or with `docker exec mile /mile version`.
+      placeholder: "0.5.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run it?
+      options:
+        - Docker Compose
+        - TrueNAS SCALE
+        - Other (say below)
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Device and browser
+      placeholder: "iPhone, Safari, installed as an app"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: The steps to reproduce it, what you expected and what you got instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Any error from `docker logs mile`. Remove addresses, emails and anything private.
+      render: text

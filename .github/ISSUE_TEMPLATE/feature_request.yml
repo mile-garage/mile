@@ -1,0 +1,18 @@
+name: Idea or feature request
+description: Something MILE could do better or doesn't do yet
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: You can write in English or Italian.
+  - type: textarea
+    id: need
+    attributes:
+      label: What would you like to do?
+      description: Describe what you need, rather than how it should look.
+    validations:
+      required: true
+  - type: textarea
+    id: now
+    attributes:
+      label: How do you manage it today?

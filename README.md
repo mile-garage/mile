@@ -14,7 +14,7 @@ Self-hosted tracker for your vehicles: deadlines, expenses, fuel and documents, 
   - **Oil change**: its own km/months interval, handy for motorcycles and scooters. A service also resets it.
   - **Automatic transmission oil** (optional): its own km/months interval, for automatic and dual-clutch gearboxes.
   - **Brake pads and discs** (optional): each with its own km interval. New discs reset the pads too.
-  - **Tyres**: summer, winter and all-season sets. With summer tyres fitted, winter ones are due by 15 November (required until 15 April); with winter tyres, summer ones by 15 May. Front/rear rotation every N km, and the km driven on each set.
+  - **Tyres**: summer, winter and all-season sets. With summer tyres fitted, winter ones are due by 15 November (from then until 15 April they are required where a local ordinance says so); with winter tyres, summer ones by 15 May. Front/rear rotation every N km, and the km driven on each set.
   - **Custom reminders** (driving licence…), optionally repeating.
 - **Expenses** by category, with PDF invoices and photos of receipts attached. A page shows what your vehicles cost month by month, all of them or one.
 - **Fuel**: consumption with the full-to-full method (l/100 km, kWh/100 km for EVs), cost per km, average price.

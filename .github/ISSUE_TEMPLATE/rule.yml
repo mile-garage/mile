@@ -1,0 +1,38 @@
+name: Wrong or missing deadline rule
+description: A deadline (inspection, road tax, insurance, tyres…) is computed wrongly, or a case isn't handled
+labels: [rules]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        MILE computes deadlines from Italian rules. If a date is wrong for your vehicle, region or case, tell us here. You can write in English or Italian.
+  - type: dropdown
+    id: deadline
+    attributes:
+      label: Which deadline?
+      options:
+        - Inspection (revisione)
+        - Road tax (bollo)
+        - Insurance
+        - Tyres
+        - Service, oil, brakes
+        - Something MILE doesn't track yet
+    validations:
+      required: true
+  - type: input
+    id: case
+    attributes:
+      label: Vehicle and place
+      description: Type of vehicle, fuel, registration year, region, anything that makes the case special.
+      placeholder: "Motorcycle, petrol, registered 2019, Lombardia"
+  - type: textarea
+    id: what
+    attributes:
+      label: What MILE shows, and what the rule should be
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: A link to the law, the region's or ACI's page, or anything official that confirms the rule.
